@@ -8,6 +8,7 @@ import { authService } from './auth/auth-service.js';
 import { log, createError, getOrCreateDeviceId, getDeviceMetadata } from './utils.js';
 import { validateSyncData } from './validation.js';
 import { errorHandler, ErrorCategory, ErrorSeverity, withErrorHandling } from './error-handler.js';
+import { syncHistoryService, SyncStatus, SyncOperationType } from './sync-history-service.js';
 
 /**
  * Sync engine class
@@ -17,11 +18,12 @@ export class SyncEngine {
     this.tabManager = new TabManager();
     this.isInitialized = false;
     this.isSyncing = false;
-    this.syncHistory = [];
+    this.syncHistory = []; // Legacy - will be replaced by syncHistoryService
     this.deviceId = null;
     this.lastSyncTime = null;
     this.syncFileName = 'tab-sync-data.json';
     this.historyFileName = 'sync-history.json';
+    this.currentOperationId = null;
   }
 
   /**
@@ -33,11 +35,12 @@ export class SyncEngine {
       // Initialize dependencies
       await this.tabManager.initialize();
       await tabSerializer.initialize();
+      await syncHistoryService.initialize();
       
       // Get device information
       this.deviceId = await getOrCreateDeviceId();
       
-      // Load sync history
+      // Load sync history (legacy support)
       await this.loadSyncHistory();
       
       this.isInitialized = true;
@@ -86,8 +89,38 @@ export class SyncEngine {
         dryRun = false
       } = options;
 
+      // Start comprehensive sync operation tracking
+      const operationType = direction === 'bidirectional' ? SyncOperationType.BIDIRECTIONAL :
+                           direction === 'upload' ? SyncOperationType.UPLOAD :
+                           SyncOperationType.DOWNLOAD;
+
+      this.currentOperationId = await syncHistoryService.startOperation({
+        type: operationType,
+        direction: direction,
+        deviceId: this.deviceId,
+        trigger: options.trigger || 'manual',
+        metadata: {
+          forceOverwrite,
+          dryRun,
+          userAgent: navigator.userAgent,
+          ...options.metadata
+        }
+      });
+
+      // Update operation status to in progress
+      await syncHistoryService.updateOperationStatus(this.currentOperationId, SyncStatus.IN_PROGRESS, {
+        phase: 'initialization'
+      });
+
       // Ensure authentication and storage are ready
+      const authStartTime = Date.now();
       await this.ensureStorageReady();
+      const authTime = Date.now() - authStartTime;
+
+      await syncHistoryService.updateOperationStatus(this.currentOperationId, SyncStatus.IN_PROGRESS, {
+        phase: 'authentication_complete',
+        performance: { authTime }
+      });
 
       const syncResult = {
         syncId,
@@ -129,6 +162,17 @@ export class SyncEngine {
         syncResult.endTime = Date.now();
         syncResult.duration = syncResult.endTime - syncResult.startTime;
 
+        // Complete comprehensive sync operation tracking
+        await syncHistoryService.completeOperation(this.currentOperationId, {
+          success: true,
+          tabsProcessed: syncResult.operations.reduce((sum, op) => sum + (op.tabCount || 0), 0),
+          tabsCreated: syncResult.operations.reduce((sum, op) => sum + (op.created || 0), 0),
+          tabsClosed: syncResult.operations.reduce((sum, op) => sum + (op.closed || 0), 0),
+          conflictsDetected: syncResult.conflicts.length,
+          conflictsResolved: syncResult.conflicts.filter(c => c.resolved).length,
+          phase: 'completion'
+        });
+
         // Update last sync time
         this.lastSyncTime = syncResult.endTime;
         await this.updateLastSyncTime(syncResult.endTime);
@@ -150,6 +194,24 @@ export class SyncEngine {
           message: error.message,
           timestamp: Date.now()
         });
+
+        // Complete comprehensive sync operation tracking with failure
+        try {
+          await syncHistoryService.completeOperation(this.currentOperationId, {
+            success: false,
+            error: error,
+            phase: 'failure'
+          });
+        } catch (historyError) {
+          await errorHandler.handleError(historyError, {
+            category: ErrorCategory.SYNC,
+            severity: ErrorSeverity.LOW,
+            source: 'sync_engine_history_failure',
+            context: { syncId, originalError: error.message },
+            recoverable: true,
+            userVisible: false
+          });
+        }
 
         // Handle the sync error with comprehensive error handling
         await errorHandler.handleError(error, {
