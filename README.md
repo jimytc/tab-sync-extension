@@ -8,30 +8,35 @@ A comprehensive Chromium browser extension that enables secure, manual synchroni
 ## Features
 
 ### 🔐 Secure Authentication
+
 - **Multi-Provider Support**: Authenticate with Google or GitHub accounts
 - **OAuth 2.0 Integration**: Secure token-based authentication
 - **Automatic Token Refresh**: Seamless re-authentication when needed
 - **Privacy-First**: No automatic data collection, user consent for all operations
 
 ### 📱 Cross-Device Synchronization
+
 - **Manual Sync Control**: User-triggered synchronization for complete control
 - **Bidirectional Sync**: Upload, download, or sync in both directions
 - **Device Identification**: Unique device tracking with metadata
 - **Cloud Storage**: Secure storage using Google Drive or GitHub
 
 ### ⚡ Intelligent Conflict Resolution
+
 - **Automatic Detection**: Identifies conflicts between devices automatically
 - **Multiple Resolution Strategies**: Local wins, remote wins, or manual resolution
 - **Interactive UI**: User-friendly conflict resolution interface
 - **Conflict History**: Track and analyze conflict patterns
 
 ### 📊 Comprehensive Monitoring
+
 - **Detailed History**: Complete sync operation tracking with statistics
 - **Performance Metrics**: Monitor sync speed and success rates
 - **Error Handling**: Robust error recovery with user-friendly notifications
 - **Real-time Status**: Live sync progress and status updates
 
 ### ⌨️ Keyboard Shortcuts
+
 - **Customizable Shortcuts**: Configure keyboard shortcuts for quick access
 - **Default Shortcut**: `Ctrl+Shift+S` to trigger sync
 - **Conflict Detection**: Automatic detection of shortcut conflicts
@@ -39,11 +44,13 @@ A comprehensive Chromium browser extension that enables secure, manual synchroni
 ## Installation
 
 ### From Chrome Web Store
+
 1. Visit the Chrome Web Store (link coming soon)
 2. Click "Add to Chrome"
 3. Follow the installation prompts
 
 ### Manual Installation (Development)
+
 1. Clone this repository
 2. Open Chrome and navigate to `chrome://extensions/`
 3. Enable "Developer mode"
@@ -53,18 +60,21 @@ A comprehensive Chromium browser extension that enables secure, manual synchroni
 ## Quick Start
 
 ### 1. Initial Setup
+
 1. Click the Tab Sync extension icon in your browser toolbar
 2. Choose your authentication provider (Google or GitHub)
 3. Complete the OAuth authentication flow
 4. Your extension is now ready to sync!
 
 ### 2. First Sync
+
 1. Open some tabs you want to sync
 2. Click the extension icon or use `Ctrl+Shift+S`
 3. Click "Sync Now" in the popup
 4. Your tabs are now saved to the cloud!
 
 ### 3. Sync on Another Device
+
 1. Install the extension on your other device
 2. Sign in with the same account
 3. Click "Sync Now" to download your tabs
@@ -75,11 +85,13 @@ A comprehensive Chromium browser extension that enables secure, manual synchroni
 ### Authentication
 
 #### Google Authentication
+
 - **Required Permissions**: Google Drive access for storing sync data
 - **Data Storage**: Encrypted sync data stored in your Google Drive
 - **Privacy**: Only sync data is stored, no browsing history or personal data
 
 #### GitHub Authentication
+
 - **Required Permissions**: Repository access for storing sync data
 - **Data Storage**: Encrypted sync data stored in a private repository or gist
 - **Privacy**: Data is stored in your personal GitHub account
@@ -87,6 +99,7 @@ A comprehensive Chromium browser extension that enables secure, manual synchroni
 ### Sync Operations
 
 #### Manual Sync
+
 1. Click the extension icon
 2. Choose sync direction:
    - **Upload**: Send local tabs to cloud
@@ -96,6 +109,7 @@ A comprehensive Chromium browser extension that enables secure, manual synchroni
 4. Monitor progress in the popup
 
 #### Keyboard Shortcuts
+
 - **Default**: `Ctrl+Shift+S` (Windows/Linux) or `Cmd+Shift+S` (Mac)
 - **Customization**: Change shortcuts in the extension settings
 - **Confirmation**: Optional confirmation dialog before sync
@@ -118,11 +132,13 @@ When conflicts are detected between devices:
 ### Settings and Configuration
 
 #### Access Settings
+
 1. Right-click the extension icon
 2. Select "Options" or click "Settings" in the popup
 3. Configure your preferences
 
 #### Available Settings
+
 - **Sync Confirmation**: Require confirmation before sync
 - **Keyboard Shortcuts**: Customize shortcut keys
 - **Conflict Resolution**: Default resolution strategy
@@ -132,11 +148,13 @@ When conflicts are detected between devices:
 ### Sync History
 
 #### View History
+
 1. Open extension settings
 2. Navigate to "Sync History" tab
 3. View detailed sync operations
 
 #### History Features
+
 - **Operation Details**: Complete sync information
 - **Performance Metrics**: Speed and success rates
 - **Error Logs**: Detailed error information
@@ -146,19 +164,24 @@ When conflicts are detected between devices:
 ## Advanced Features
 
 ### Dry Run Mode
+
 Test sync operations without making changes:
+
 ```javascript
 // Available in developer console
-syncEngine.triggerSync({ dryRun: true })
+syncEngine.triggerSync({ dryRun: true });
 ```
 
 ### Batch Operations
+
 Sync multiple tab sets efficiently:
+
 - Automatic batching for large tab counts
 - Progress indicators for long operations
 - Cancellation support for running syncs
 
 ### Performance Optimization
+
 - **Incremental Sync**: Only sync changed tabs
 - **Compression**: Efficient data storage
 - **Caching**: Local caching for faster operations
@@ -169,24 +192,30 @@ Sync multiple tab sets efficiently:
 ### Common Issues
 
 #### Authentication Problems
+
 **Issue**: "Authentication failed" error
 **Solution**:
+
 1. Check internet connection
 2. Clear browser cache and cookies
 3. Try signing out and back in
 4. Verify account permissions
 
 #### Sync Failures
+
 **Issue**: Sync operations fail consistently
 **Solution**:
+
 1. Check cloud storage quota
 2. Verify network connectivity
 3. Review error logs in settings
 4. Try manual conflict resolution
 
 #### Performance Issues
+
 **Issue**: Slow sync operations
 **Solution**:
+
 1. Reduce number of open tabs
 2. Check network speed
 3. Clear sync history
@@ -194,13 +223,13 @@ Sync multiple tab sets efficiently:
 
 ### Error Codes
 
-| Code | Description | Solution |
-|------|-------------|----------|
-| `AUTH_FAILED` | Authentication error | Re-authenticate |
-| `STORAGE_QUOTA` | Storage limit exceeded | Clear old data |
-| `NETWORK_ERROR` | Connection problem | Check internet |
-| `CONFLICT_DETECTED` | Merge conflicts found | Resolve manually |
-| `INVALID_DATA` | Corrupted sync data | Reset sync data |
+| Code                | Description            | Solution         |
+| ------------------- | ---------------------- | ---------------- |
+| `AUTH_FAILED`       | Authentication error   | Re-authenticate  |
+| `STORAGE_QUOTA`     | Storage limit exceeded | Clear old data   |
+| `NETWORK_ERROR`     | Connection problem     | Check internet   |
+| `CONFLICT_DETECTED` | Merge conflicts found  | Resolve manually |
+| `INVALID_DATA`      | Corrupted sync data    | Reset sync data  |
 
 ### Getting Help
 
@@ -212,24 +241,28 @@ Sync multiple tab sets efficiently:
 ## Privacy and Security
 
 ### Data Protection
+
 - **Encryption**: All sync data is encrypted before storage
 - **Local Storage**: Sensitive data stored securely in browser
 - **No Tracking**: No user behavior tracking or analytics
 - **Minimal Permissions**: Only required permissions requested
 
 ### What Data is Stored
+
 - **Tab Information**: URLs, titles, and organization
 - **Device Metadata**: Device name and browser version
 - **Sync History**: Operation logs and statistics
 - **Settings**: User preferences and configuration
 
 ### What Data is NOT Stored
+
 - **Browsing History**: No browsing history collected
 - **Personal Data**: No personal information stored
 - **Tab Content**: No webpage content or form data
 - **Passwords**: No password or authentication data
 
 ### Data Retention
+
 - **Sync Data**: Stored until manually deleted
 - **History**: Configurable retention period (default: 30 days)
 - **Logs**: Error logs kept for 7 days
@@ -240,11 +273,13 @@ Sync multiple tab sets efficiently:
 ### Building from Source
 
 #### Prerequisites
+
 - Node.js 18+ and npm
 - Chrome/Chromium browser
 - Git
 
 #### Setup
+
 ```bash
 # Clone repository
 git clone https://github.com/your-org/tab-sync-extension.git
@@ -264,6 +299,7 @@ npm run dev
 ```
 
 #### Project Structure
+
 ```
 tab-sync-extension/
 ├── manifest.json          # Extension manifest
@@ -283,6 +319,7 @@ tab-sync-extension/
 We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
 
 #### Development Workflow
+
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
@@ -291,6 +328,7 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 6. Submit a pull request
 
 #### Code Standards
+
 - **ESLint**: Follow our linting rules
 - **Testing**: Maintain test coverage above 90%
 - **Documentation**: Update docs for new features
@@ -301,12 +339,13 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 ### Core Services
 
 #### SyncEngine
+
 ```javascript
 // Trigger sync operation
 await syncEngine.triggerSync({
-  direction: 'bidirectional', // 'upload', 'download', 'bidirectional'
+  direction: "bidirectional", // 'upload', 'download', 'bidirectional'
   forceOverwrite: false,
-  dryRun: false
+  dryRun: false,
 });
 
 // Get sync status
@@ -314,9 +353,10 @@ const status = await syncEngine.getSyncStatus();
 ```
 
 #### AuthService
+
 ```javascript
 // Authenticate with provider
-await authService.authenticate('google'); // or 'github'
+await authService.authenticate("google"); // or 'github'
 
 // Check authentication status
 const status = await authService.getAuthStatus();
@@ -326,12 +366,13 @@ await authService.signOut();
 ```
 
 #### StorageService
+
 ```javascript
 // Store data
-await storageService.store('filename.json', data);
+await storageService.store("filename.json", data);
 
 // Retrieve data
-const result = await storageService.retrieve('filename.json');
+const result = await storageService.retrieve("filename.json");
 
 // List files
 const files = await storageService.listFiles();
@@ -340,24 +381,27 @@ const files = await storageService.listFiles();
 ### Events and Callbacks
 
 #### Sync Progress
+
 ```javascript
 // Register for sync progress updates
 syncEngine.onProgress((progress) => {
-  console.log('Sync progress:', progress);
+  console.log("Sync progress:", progress);
 });
 ```
 
 #### Error Handling
+
 ```javascript
 // Register error handler
 errorHandler.registerNotificationCallback((error) => {
-  console.log('Error occurred:', error);
+  console.log("Error occurred:", error);
 });
 ```
 
 ## Changelog
 
 ### Version 1.0.0 (Current)
+
 - Initial release
 - Google and GitHub authentication
 - Bidirectional sync with conflict resolution
@@ -368,6 +412,7 @@ errorHandler.registerNotificationCallback((error) => {
 - Performance optimizations
 
 ### Planned Features
+
 - **Automatic Sync**: Optional background synchronization
 - **Tab Groups**: Support for Chrome tab groups
 - **Selective Sync**: Choose which tabs to sync
