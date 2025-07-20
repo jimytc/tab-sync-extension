@@ -90,7 +90,7 @@
     - Stage all files and commit with message: "feat: implement Google Drive storage adapter"
     - _Requirements: 5.1, 5.2, 5.3_
 
-  - [-] 5.2 Implement GitHub storage adapter
+  - [x] 5.2 Implement GitHub storage adapter
 
     - Set up GitHub API integration for private repositories or gists
     - Implement file operations for sync data storage
@@ -99,7 +99,7 @@
     - Stage all files and commit with message: "feat: implement GitHub storage adapter"
     - _Requirements: 5.1, 5.2, 5.3_
 
-  - [ ] 5.3 Create unified storage interface
+  - [-] 5.3 Create unified storage interface
     - Implement storage factory that selects appropriate provider
     - Add encryption/decryption for sensitive data
     - Create storage operation retry logic with exponential backoff
