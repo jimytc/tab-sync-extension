@@ -438,52 +438,628 @@ export class SyncEngine {
     try {
       const conflicts = [];
       const remoteTabs = remoteSyncData.tabs;
-
-      // Check timestamp conflicts
-      const localMaxTimestamp = Math.max(...localTabs.map(tab => tab.timestamp));
-      const remoteTimestamp = remoteSyncData.timestamp;
       const lastSyncTime = this.lastSyncTime || 0;
 
-      // If both local and remote have changes since last sync, it's a conflict
-      if (localMaxTimestamp > lastSyncTime && remoteTimestamp > lastSyncTime) {
-        conflicts.push({
-          type: 'timestamp',
-          description: 'Both local and remote data have changes since last sync',
-          localTimestamp: localMaxTimestamp,
-          remoteTimestamp: remoteTimestamp,
-          lastSyncTime: lastSyncTime
-        });
-      }
+      log('info', 'Starting comprehensive conflict detection', {
+        localTabCount: localTabs.length,
+        remoteTabCount: remoteTabs.length,
+        lastSyncTime: lastSyncTime
+      });
 
-      // Check for URL conflicts (same URL, different metadata)
-      const localUrlMap = new Map(localTabs.map(tab => [tab.url, tab]));
-      const remoteUrlMap = new Map(remoteTabs.map(tab => [tab.url, tab]));
+      // 1. Timestamp-based conflict detection
+      const timestampConflicts = await this.detectTimestampConflicts(
+        localTabs, remoteSyncData, lastSyncTime
+      );
+      conflicts.push(...timestampConflicts);
 
-      for (const [url, localTab] of localUrlMap) {
-        const remoteTab = remoteUrlMap.get(url);
-        if (remoteTab) {
-          // Same URL exists in both, check for differences
-          if (localTab.title !== remoteTab.title || 
-              localTab.pinned !== remoteTab.pinned ||
-              localTab.index !== remoteTab.index) {
-            conflicts.push({
-              type: 'tab_metadata',
-              url: url,
-              description: 'Same URL with different metadata',
-              localTab: localTab,
-              remoteTab: remoteTab
-            });
-          }
-        }
-      }
+      // 2. Tab-level conflict detection
+      const tabConflicts = await this.detectTabLevelConflicts(
+        localTabs, remoteTabs
+      );
+      conflicts.push(...tabConflicts);
 
-      log('info', 'Conflict detection completed', { conflictCount: conflicts.length });
-      return conflicts;
+      // 3. Structural conflict detection
+      const structuralConflicts = await this.detectStructuralConflicts(
+        localTabs, remoteTabs
+      );
+      conflicts.push(...structuralConflicts);
+
+      // 4. Device-specific conflict detection
+      const deviceConflicts = await this.detectDeviceConflicts(
+        localTabs, remoteSyncData
+      );
+      conflicts.push(...deviceConflicts);
+
+      // 5. Window organization conflicts
+      const windowConflicts = await this.detectWindowOrganizationConflicts(
+        localTabs, remoteTabs
+      );
+      conflicts.push(...windowConflicts);
+
+      // Assign severity levels to conflicts
+      const prioritizedConflicts = this.prioritizeConflicts(conflicts);
+
+      log('info', 'Conflict detection completed', { 
+        totalConflicts: prioritizedConflicts.length,
+        byType: this.groupConflictsByType(prioritizedConflicts),
+        bySeverity: this.groupConflictsBySeverity(prioritizedConflicts)
+      });
+
+      return prioritizedConflicts;
 
     } catch (error) {
       log('error', 'Conflict detection failed', { error: error.message });
       throw error;
     }
+  }
+
+  /**
+   * Detect timestamp-based conflicts
+   * @param {TabData[]} localTabs - Local tab data
+   * @param {SyncData} remoteSyncData - Remote sync data
+   * @param {number} lastSyncTime - Last successful sync timestamp
+   * @returns {Promise<Object[]>} Timestamp conflicts
+   */
+  async detectTimestampConflicts(localTabs, remoteSyncData, lastSyncTime) {
+    const conflicts = [];
+    const remoteTabs = remoteSyncData.tabs;
+
+    // Check if both local and remote have changes since last sync
+    const localMaxTimestamp = localTabs.length > 0 ? 
+      Math.max(...localTabs.map(tab => tab.timestamp)) : 0;
+    const remoteTimestamp = remoteSyncData.timestamp;
+
+    // Concurrent modification conflict
+    if (localMaxTimestamp > lastSyncTime && remoteTimestamp > lastSyncTime) {
+      const timeDiff = Math.abs(localMaxTimestamp - remoteTimestamp);
+      const severity = timeDiff < 300000 ? 3 : 2; // High severity if within 5 minutes
+
+      conflicts.push({
+        id: `timestamp_${Date.now()}`,
+        type: 'timestamp',
+        subtype: 'concurrent_modification',
+        severity: severity,
+        description: 'Both local and remote data have changes since last sync',
+        details: {
+          localTimestamp: localMaxTimestamp,
+          remoteTimestamp: remoteTimestamp,
+          lastSyncTime: lastSyncTime,
+          timeDifference: timeDiff,
+          localChanges: localTabs.filter(tab => tab.timestamp > lastSyncTime).length,
+          remoteChanges: remoteTabs.filter(tab => tab.timestamp > lastSyncTime).length
+        },
+        resolutionStrategies: ['local_wins', 'remote_wins', 'merge', 'manual']
+      });
+    }
+
+    // Stale data conflict (one side very old)
+    const staleThreshold = 7 * 24 * 60 * 60 * 1000; // 7 days
+    const now = Date.now();
+    
+    if (now - localMaxTimestamp > staleThreshold && remoteTimestamp > lastSyncTime) {
+      conflicts.push({
+        id: `stale_local_${Date.now()}`,
+        type: 'timestamp',
+        subtype: 'stale_local',
+        severity: 2,
+        description: 'Local data appears stale compared to remote',
+        details: {
+          localAge: now - localMaxTimestamp,
+          remoteTimestamp: remoteTimestamp,
+          threshold: staleThreshold
+        },
+        resolutionStrategies: ['remote_wins', 'manual']
+      });
+    }
+
+    if (now - remoteTimestamp > staleThreshold && localMaxTimestamp > lastSyncTime) {
+      conflicts.push({
+        id: `stale_remote_${Date.now()}`,
+        type: 'timestamp',
+        subtype: 'stale_remote',
+        severity: 2,
+        description: 'Remote data appears stale compared to local',
+        details: {
+          remoteAge: now - remoteTimestamp,
+          localTimestamp: localMaxTimestamp,
+          threshold: staleThreshold
+        },
+        resolutionStrategies: ['local_wins', 'manual']
+      });
+    }
+
+    return conflicts;
+  }
+
+  /**
+   * Detect tab-level conflicts
+   * @param {TabData[]} localTabs - Local tab data
+   * @param {TabData[]} remoteTabs - Remote tab data
+   * @returns {Promise<Object[]>} Tab-level conflicts
+   */
+  async detectTabLevelConflicts(localTabs, remoteTabs) {
+    const conflicts = [];
+    
+    // Create URL-based maps for efficient lookup
+    const localUrlMap = new Map(localTabs.map(tab => [tab.url, tab]));
+    const remoteUrlMap = new Map(remoteTabs.map(tab => [tab.url, tab]));
+
+    // Check for modified tabs (same URL, different metadata)
+    for (const [url, localTab] of localUrlMap) {
+      const remoteTab = remoteUrlMap.get(url);
+      if (remoteTab && remoteTab.deviceId !== localTab.deviceId) {
+        const differences = this.compareTabMetadata(localTab, remoteTab);
+        
+        if (differences.length > 0) {
+          const severity = this.calculateTabConflictSeverity(differences);
+          
+          conflicts.push({
+            id: `tab_modified_${this.hashUrl(url)}`,
+            type: 'tab_metadata',
+            subtype: 'modified',
+            severity: severity,
+            description: `Tab "${localTab.title}" has different metadata`,
+            url: url,
+            details: {
+              differences: differences,
+              localTab: localTab,
+              remoteTab: remoteTab,
+              conflictFields: differences.map(d => d.field)
+            },
+            resolutionStrategies: ['local_wins', 'remote_wins', 'merge_metadata', 'manual']
+          });
+        }
+      }
+    }
+
+    // Check for duplicate tabs (same URL from different devices)
+    const urlCounts = new Map();
+    [...localTabs, ...remoteTabs].forEach(tab => {
+      if (!urlCounts.has(tab.url)) {
+        urlCounts.set(tab.url, { local: 0, remote: 0, devices: new Set() });
+      }
+      const count = urlCounts.get(tab.url);
+      if (localTabs.includes(tab)) {
+        count.local++;
+      } else {
+        count.remote++;
+      }
+      count.devices.add(tab.deviceId);
+    });
+
+    for (const [url, counts] of urlCounts) {
+      if (counts.devices.size > 1 && (counts.local > 0 && counts.remote > 0)) {
+        conflicts.push({
+          id: `tab_duplicate_${this.hashUrl(url)}`,
+          type: 'tab_metadata',
+          subtype: 'duplicate',
+          severity: 1,
+          description: `Duplicate tab found: "${localUrlMap.get(url)?.title || remoteUrlMap.get(url)?.title}"`,
+          url: url,
+          details: {
+            localCount: counts.local,
+            remoteCount: counts.remote,
+            devices: Array.from(counts.devices),
+            tabs: [...localTabs, ...remoteTabs].filter(tab => tab.url === url)
+          },
+          resolutionStrategies: ['keep_local', 'keep_remote', 'keep_newest', 'keep_all', 'manual']
+        });
+      }
+    }
+
+    return conflicts;
+  }
+
+  /**
+   * Detect structural conflicts (tab organization)
+   * @param {TabData[]} localTabs - Local tab data
+   * @param {TabData[]} remoteTabs - Remote tab data
+   * @returns {Promise<Object[]>} Structural conflicts
+   */
+  async detectStructuralConflicts(localTabs, remoteTabs) {
+    const conflicts = [];
+
+    // Group tabs by window
+    const localWindows = this.groupTabsByWindow(localTabs);
+    const remoteWindows = this.groupTabsByWindow(remoteTabs);
+
+    // Check for window count differences
+    if (Object.keys(localWindows).length !== Object.keys(remoteWindows).length) {
+      conflicts.push({
+        id: `structural_window_count_${Date.now()}`,
+        type: 'structural',
+        subtype: 'window_count',
+        severity: 2,
+        description: 'Different number of windows between local and remote',
+        details: {
+          localWindowCount: Object.keys(localWindows).length,
+          remoteWindowCount: Object.keys(remoteWindows).length,
+          localWindows: Object.keys(localWindows).map(Number),
+          remoteWindows: Object.keys(remoteWindows).map(Number)
+        },
+        resolutionStrategies: ['merge_windows', 'local_structure', 'remote_structure', 'manual']
+      });
+    }
+
+    // Check for tab order conflicts within windows
+    for (const windowId of Object.keys(localWindows)) {
+      const localWindowTabs = localWindows[windowId];
+      const remoteWindowTabs = remoteWindows[windowId];
+
+      if (remoteWindowTabs) {
+        const orderConflict = this.detectTabOrderConflicts(localWindowTabs, remoteWindowTabs);
+        if (orderConflict) {
+          conflicts.push({
+            id: `structural_order_${windowId}_${Date.now()}`,
+            type: 'structural',
+            subtype: 'tab_order',
+            severity: 1,
+            description: `Tab order differs in window ${windowId}`,
+            details: {
+              windowId: parseInt(windowId),
+              localOrder: localWindowTabs.map(tab => ({ url: tab.url, index: tab.index })),
+              remoteOrder: remoteWindowTabs.map(tab => ({ url: tab.url, index: tab.index })),
+              conflicts: orderConflict
+            },
+            resolutionStrategies: ['local_order', 'remote_order', 'merge_order', 'manual']
+          });
+        }
+      }
+    }
+
+    // Check for pinned tab conflicts
+    const pinnedConflicts = this.detectPinnedTabConflicts(localTabs, remoteTabs);
+    conflicts.push(...pinnedConflicts);
+
+    return conflicts;
+  }
+
+  /**
+   * Detect device-specific conflicts
+   * @param {TabData[]} localTabs - Local tab data
+   * @param {SyncData} remoteSyncData - Remote sync data
+   * @returns {Promise<Object[]>} Device conflicts
+   */
+  async detectDeviceConflicts(localTabs, remoteSyncData) {
+    const conflicts = [];
+    const remoteDeviceId = remoteSyncData.deviceId;
+    const localDeviceId = this.deviceId;
+
+    // Check for same device ID (shouldn't happen but could indicate issues)
+    if (remoteDeviceId === localDeviceId) {
+      conflicts.push({
+        id: `device_same_id_${Date.now()}`,
+        type: 'device',
+        subtype: 'same_device_id',
+        severity: 3,
+        description: 'Remote data has same device ID as local device',
+        details: {
+          deviceId: localDeviceId,
+          remoteTimestamp: remoteSyncData.timestamp,
+          localTimestamp: Math.max(...localTabs.map(tab => tab.timestamp))
+        },
+        resolutionStrategies: ['regenerate_device_id', 'use_newest', 'manual']
+      });
+    }
+
+    // Check for device capability conflicts (e.g., mobile vs desktop)
+    const remoteMetadata = remoteSyncData.metadata;
+    const localMetadata = await getDeviceMetadata();
+
+    if (remoteMetadata && localMetadata) {
+      const platformConflict = this.detectPlatformConflicts(localMetadata, remoteMetadata);
+      if (platformConflict) {
+        conflicts.push(platformConflict);
+      }
+    }
+
+    return conflicts;
+  }
+
+  /**
+   * Detect window organization conflicts
+   * @param {TabData[]} localTabs - Local tab data
+   * @param {TabData[]} remoteTabs - Remote tab data
+   * @returns {Promise<Object[]>} Window organization conflicts
+   */
+  async detectWindowOrganizationConflicts(localTabs, remoteTabs) {
+    const conflicts = [];
+
+    // Check for tabs that moved between windows
+    const localUrlToWindow = new Map(localTabs.map(tab => [tab.url, tab.windowId]));
+    const remoteUrlToWindow = new Map(remoteTabs.map(tab => [tab.url, tab.windowId]));
+
+    const movedTabs = [];
+    for (const [url, localWindowId] of localUrlToWindow) {
+      const remoteWindowId = remoteUrlToWindow.get(url);
+      if (remoteWindowId && remoteWindowId !== localWindowId) {
+        movedTabs.push({
+          url,
+          localWindowId,
+          remoteWindowId,
+          title: localTabs.find(tab => tab.url === url)?.title
+        });
+      }
+    }
+
+    if (movedTabs.length > 0) {
+      conflicts.push({
+        id: `window_organization_${Date.now()}`,
+        type: 'structural',
+        subtype: 'window_organization',
+        severity: 1,
+        description: `${movedTabs.length} tabs moved between windows`,
+        details: {
+          movedTabs: movedTabs,
+          affectedWindows: [...new Set([
+            ...movedTabs.map(t => t.localWindowId),
+            ...movedTabs.map(t => t.remoteWindowId)
+          ])]
+        },
+        resolutionStrategies: ['local_organization', 'remote_organization', 'merge_smart', 'manual']
+      });
+    }
+
+    return conflicts;
+  }
+
+  /**
+   * Compare tab metadata to find differences
+   * @param {TabData} localTab - Local tab
+   * @param {TabData} remoteTab - Remote tab
+   * @returns {Object[]} Array of differences
+   */
+  compareTabMetadata(localTab, remoteTab) {
+    const differences = [];
+    const fieldsToCompare = ['title', 'pinned', 'index', 'windowId'];
+
+    for (const field of fieldsToCompare) {
+      if (localTab[field] !== remoteTab[field]) {
+        differences.push({
+          field,
+          localValue: localTab[field],
+          remoteValue: remoteTab[field],
+          severity: this.getFieldConflictSeverity(field)
+        });
+      }
+    }
+
+    return differences;
+  }
+
+  /**
+   * Calculate severity for tab conflicts based on differences
+   * @param {Object[]} differences - Array of differences
+   * @returns {number} Severity level (1-3)
+   */
+  calculateTabConflictSeverity(differences) {
+    const maxSeverity = Math.max(...differences.map(d => d.severity));
+    const criticalFields = differences.filter(d => d.severity >= 2).length;
+    
+    if (criticalFields > 1) return 3;
+    if (maxSeverity >= 2) return 2;
+    return 1;
+  }
+
+  /**
+   * Get conflict severity for specific fields
+   * @param {string} field - Field name
+   * @returns {number} Severity level
+   */
+  getFieldConflictSeverity(field) {
+    const severityMap = {
+      title: 2,      // Medium - affects user recognition
+      pinned: 2,     // Medium - affects workflow
+      windowId: 3,   // High - affects organization
+      index: 1       // Low - affects order only
+    };
+    return severityMap[field] || 1;
+  }
+
+  /**
+   * Group tabs by window ID
+   * @param {TabData[]} tabs - Tab data array
+   * @returns {Object} Tabs grouped by window ID
+   */
+  groupTabsByWindow(tabs) {
+    return tabs.reduce((windows, tab) => {
+      const windowId = tab.windowId.toString();
+      if (!windows[windowId]) {
+        windows[windowId] = [];
+      }
+      windows[windowId].push(tab);
+      return windows;
+    }, {});
+  }
+
+  /**
+   * Detect tab order conflicts within a window
+   * @param {TabData[]} localTabs - Local window tabs
+   * @param {TabData[]} remoteTabs - Remote window tabs
+   * @returns {Object|null} Order conflict details or null
+   */
+  detectTabOrderConflicts(localTabs, remoteTabs) {
+    // Sort by index to compare order
+    const localSorted = [...localTabs].sort((a, b) => a.index - b.index);
+    const remoteSorted = [...remoteTabs].sort((a, b) => a.index - b.index);
+
+    // Compare URL order
+    const localOrder = localSorted.map(tab => tab.url);
+    const remoteOrder = remoteSorted.map(tab => tab.url);
+
+    if (JSON.stringify(localOrder) !== JSON.stringify(remoteOrder)) {
+      return {
+        localOrder,
+        remoteOrder,
+        commonUrls: localOrder.filter(url => remoteOrder.includes(url)),
+        localOnlyUrls: localOrder.filter(url => !remoteOrder.includes(url)),
+        remoteOnlyUrls: remoteOrder.filter(url => !localOrder.includes(url))
+      };
+    }
+
+    return null;
+  }
+
+  /**
+   * Detect pinned tab conflicts
+   * @param {TabData[]} localTabs - Local tab data
+   * @param {TabData[]} remoteTabs - Remote tab data
+   * @returns {Object[]} Pinned tab conflicts
+   */
+  detectPinnedTabConflicts(localTabs, remoteTabs) {
+    const conflicts = [];
+    const localPinned = new Map(
+      localTabs.filter(tab => tab.pinned).map(tab => [tab.url, tab])
+    );
+    const remotePinned = new Map(
+      remoteTabs.filter(tab => tab.pinned).map(tab => [tab.url, tab])
+    );
+
+    // Check for tabs pinned on one side but not the other
+    for (const [url, localTab] of localPinned) {
+      const remoteTab = remoteTabs.find(tab => tab.url === url);
+      if (remoteTab && !remoteTab.pinned) {
+        conflicts.push({
+          id: `pinned_conflict_${this.hashUrl(url)}`,
+          type: 'structural',
+          subtype: 'pinned_status',
+          severity: 2,
+          description: `Tab pinned locally but not remotely: "${localTab.title}"`,
+          url: url,
+          details: {
+            localPinned: true,
+            remotePinned: false,
+            localTab,
+            remoteTab
+          },
+          resolutionStrategies: ['keep_pinned', 'remove_pin', 'manual']
+        });
+      }
+    }
+
+    for (const [url, remoteTab] of remotePinned) {
+      const localTab = localTabs.find(tab => tab.url === url);
+      if (localTab && !localTab.pinned) {
+        conflicts.push({
+          id: `pinned_conflict_${this.hashUrl(url)}`,
+          type: 'structural',
+          subtype: 'pinned_status',
+          severity: 2,
+          description: `Tab pinned remotely but not locally: "${remoteTab.title}"`,
+          url: url,
+          details: {
+            localPinned: false,
+            remotePinned: true,
+            localTab,
+            remoteTab
+          },
+          resolutionStrategies: ['keep_pinned', 'remove_pin', 'manual']
+        });
+      }
+    }
+
+    return conflicts;
+  }
+
+  /**
+   * Detect platform-specific conflicts
+   * @param {Object} localMetadata - Local device metadata
+   * @param {Object} remoteMetadata - Remote device metadata
+   * @returns {Object|null} Platform conflict or null
+   */
+  detectPlatformConflicts(localMetadata, remoteMetadata) {
+    const localPlatform = this.normalizePlatform(localMetadata.platform);
+    const remotePlatform = this.normalizePlatform(remoteMetadata.platform);
+
+    if (localPlatform !== remotePlatform) {
+      return {
+        id: `platform_conflict_${Date.now()}`,
+        type: 'device',
+        subtype: 'platform_difference',
+        severity: 1,
+        description: `Different platforms: ${localPlatform} vs ${remotePlatform}`,
+        details: {
+          localPlatform,
+          remotePlatform,
+          localMetadata,
+          remoteMetadata
+        },
+        resolutionStrategies: ['platform_aware_merge', 'ignore_platform', 'manual']
+      };
+    }
+
+    return null;
+  }
+
+  /**
+   * Normalize platform names for comparison
+   * @param {string} platform - Platform string
+   * @returns {string} Normalized platform
+   */
+  normalizePlatform(platform) {
+    const p = platform.toLowerCase();
+    if (p.includes('mac')) return 'mac';
+    if (p.includes('win')) return 'windows';
+    if (p.includes('linux')) return 'linux';
+    if (p.includes('android')) return 'mobile';
+    if (p.includes('iphone') || p.includes('ipad')) return 'mobile';
+    return 'unknown';
+  }
+
+  /**
+   * Prioritize conflicts by severity and type
+   * @param {Object[]} conflicts - Array of conflicts
+   * @returns {Object[]} Prioritized conflicts
+   */
+  prioritizeConflicts(conflicts) {
+    return conflicts.sort((a, b) => {
+      // Sort by severity (high to low), then by type
+      if (a.severity !== b.severity) {
+        return b.severity - a.severity;
+      }
+      return a.type.localeCompare(b.type);
+    });
+  }
+
+  /**
+   * Group conflicts by type for reporting
+   * @param {Object[]} conflicts - Array of conflicts
+   * @returns {Object} Conflicts grouped by type
+   */
+  groupConflictsByType(conflicts) {
+    return conflicts.reduce((groups, conflict) => {
+      const key = `${conflict.type}_${conflict.subtype}`;
+      groups[key] = (groups[key] || 0) + 1;
+      return groups;
+    }, {});
+  }
+
+  /**
+   * Group conflicts by severity for reporting
+   * @param {Object[]} conflicts - Array of conflicts
+   * @returns {Object} Conflicts grouped by severity
+   */
+  groupConflictsBySeverity(conflicts) {
+    return conflicts.reduce((groups, conflict) => {
+      const severity = conflict.severity;
+      groups[severity] = (groups[severity] || 0) + 1;
+      return groups;
+    }, {});
+  }
+
+  /**
+   * Generate hash for URL (for consistent conflict IDs)
+   * @param {string} url - URL to hash
+   * @returns {string} Hash string
+   */
+  hashUrl(url) {
+    let hash = 0;
+    for (let i = 0; i < url.length; i++) {
+      const char = url.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32-bit integer
+    }
+    return Math.abs(hash).toString(16);
   }
 
   /**

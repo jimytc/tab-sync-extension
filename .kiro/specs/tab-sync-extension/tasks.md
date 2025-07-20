@@ -109,7 +109,7 @@
 
 - [ ] 6. Build sync engine with conflict resolution
 
-  - [-] 6.1 Implement basic sync operations
+  - [x] 6.1 Implement basic sync operations
 
     - Create sync trigger functionality
     - Implement data upload and download coordination
@@ -117,7 +117,7 @@
     - Write unit tests for basic sync operations
     - _Requirements: 2.1, 2.2, 7.1, 7.2_
 
-  - [ ] 6.2 Create conflict detection algorithms
+  - [-] 6.2 Create conflict detection algorithms
 
     - Implement timestamp-based conflict detection
     - Create tab-level conflict identification
