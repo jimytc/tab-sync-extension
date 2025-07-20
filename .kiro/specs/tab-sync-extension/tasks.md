@@ -43,7 +43,7 @@
     - Stage all files and commit with message: "feat: implement Google OAuth authentication flow"
     - _Requirements: 1.1, 1.2, 1.3, 5.5_
 
-  - [-] 3.2 Implement OAuth flow for GitHub authentication
+  - [x] 3.2 Implement OAuth flow for GitHub authentication
 
     - Set up GitHub OAuth configuration and scopes
     - Implement GitHub token handling and storage
@@ -52,7 +52,7 @@
     - Stage all files and commit with message: "feat: implement GitHub OAuth authentication flow"
     - _Requirements: 1.1, 1.2, 1.3, 5.5_
 
-  - [ ] 3.3 Create unified authentication service interface
+  - [-] 3.3 Create unified authentication service interface
     - Implement authentication service that supports both providers
     - Add sign-out functionality with data cleanup
     - Create authentication state management
