@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tab Sync</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Tab Sync</h1>
+      <div id="auth-status" class="status-indicator">
+        <span id="auth-text">Not authenticated</span>
+      </div>
+    </header>
+    
+    <main>
+      <div id="sync-section">
+        <button id="sync-btn" class="primary-btn" disabled>
+          <span id="sync-text">Sync Tabs</span>
+          <div id="sync-spinner" class="spinner hidden"></div>
+        </button>
+        
+        <div id="sync-status" class="sync-info">
+          <p id="last-sync">Last sync: Never</p>
+          <p id="sync-count">Tabs synced: 0</p>
+        </div>
+      </div>
+      
+      <div id="auth-section" class="hidden">
+        <p>Choose authentication provider:</p>
+        <button id="google-auth" class="auth-btn">
+          Sign in with Google
+        </button>
+        <button id="github-auth" class="auth-btn">
+          Sign in with GitHub
+        </button>
+      </div>
+    </main>
+    
+    <footer>
+      <button id="settings-btn" class="secondary-btn">Settings</button>
+      <button id="signout-btn" class="secondary-btn hidden">Sign Out</button>
+    </footer>
+  </div>
+  
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -1,0 +1,21 @@
+{
+  "name": "tab-sync-extension",
+  "version": "1.0.0",
+  "description": "Synchronize browser tabs across devices using Google or GitHub authentication",
+  "scripts": {
+    "dev": "echo 'Load extension in Chrome developer mode'",
+    "build": "echo 'Extension ready for production'",
+    "test": "echo 'Tests not yet implemented'"
+  },
+  "keywords": [
+    "chrome-extension",
+    "tab-sync",
+    "browser-extension",
+    "google-auth",
+    "github-auth"
+  ],
+  "author": "Tab Sync Extension",
+  "license": "MIT",
+  "devDependencies": {},
+  "dependencies": {}
+}

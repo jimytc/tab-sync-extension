@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tab Sync Settings</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Tab Sync Settings</h1>
+      <p class="subtitle">Configure your tab synchronization preferences</p>
+    </header>
+    
+    <main>
+      <section class="settings-section">
+        <h2>Account</h2>
+        <div class="setting-item">
+          <div class="setting-info">
+            <label>Authentication Status</label>
+            <p id="auth-status-text" class="setting-description">Not authenticated</p>
+          </div>
+          <div class="setting-actions">
+            <button id="auth-btn" class="primary-btn">Sign In</button>
+            <button id="signout-btn" class="secondary-btn hidden">Sign Out</button>
+          </div>
+        </div>
+      </section>
+      
+      <section class="settings-section">
+        <h2>Sync Status</h2>
+        <div class="sync-status-grid">
+          <div class="status-card">
+            <h3>Last Sync</h3>
+            <p id="last-sync-time">Never</p>
+          </div>
+          <div class="status-card">
+            <h3>Device ID</h3>
+            <p id="device-id">Loading...</p>
+          </div>
+          <div class="status-card">
+            <h3>Tabs Synced</h3>
+            <p id="tabs-synced">0</p>
+          </div>
+          <div class="status-card">
+            <h3>Storage Provider</h3>
+            <p id="storage-provider">None</p>
+          </div>
+        </div>
+      </section>
+      
+      <section class="settings-section">
+        <h2>Keyboard Shortcuts</h2>
+        <div class="setting-item">
+          <div class="setting-info">
+            <label>Trigger Sync</label>
+            <p class="setting-description">Keyboard shortcut to trigger tab synchronization</p>
+          </div>
+          <div class="setting-actions">
+            <input type="text" id="sync-shortcut" class="shortcut-input" readonly value="Ctrl+Shift+S">
+            <button id="edit-shortcut" class="secondary-btn">Edit</button>
+          </div>
+        </div>
+      </section>
+      
+      <section class="settings-section">
+        <h2>Sync History</h2>
+        <div class="history-controls">
+          <button id="refresh-history" class="secondary-btn">Refresh</button>
+          <button id="clear-history" class="secondary-btn">Clear History</button>
+        </div>
+        <div class="history-table-container">
+          <table id="history-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Device</th>
+                <th>Action</th>
+                <th>Tabs</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="history-tbody">
+              <tr>
+                <td colspan="5" class="no-data">No sync history available</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+      
+      <section class="settings-section">
+        <h2>Data Management</h2>
+        <div class="setting-item">
+          <div class="setting-info">
+            <label>Clear Local Data</label>
+            <p class="setting-description">Remove all locally stored sync data and settings</p>
+          </div>
+          <div class="setting-actions">
+            <button id="clear-data" class="danger-btn">Clear Data</button>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+  
+  <script src="options.js"></script>
+</body>
+</html>

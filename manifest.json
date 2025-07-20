@@ -1,0 +1,60 @@
+{
+  "manifest_version": 3,
+  "name": "Tab Sync Extension",
+  "version": "1.0.0",
+  "description": "Synchronize browser tabs across devices using Google or GitHub authentication",
+  
+  "permissions": [
+    "tabs",
+    "storage",
+    "identity",
+    "activeTab"
+  ],
+  
+  "host_permissions": [
+    "https://www.googleapis.com/*",
+    "https://api.github.com/*"
+  ],
+  
+  "background": {
+    "service_worker": "background/background.js",
+    "type": "module"
+  },
+  
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_title": "Tab Sync",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  
+  "options_page": "options/options.html",
+  
+  "commands": {
+    "trigger-sync": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+S",
+        "mac": "Command+Shift+S"
+      },
+      "description": "Trigger tab synchronization"
+    }
+  },
+  
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  
+  "oauth2": {
+    "client_id": "YOUR_GOOGLE_CLIENT_ID",
+    "scopes": [
+      "https://www.googleapis.com/auth/drive.file"
+    ]
+  }
+}
