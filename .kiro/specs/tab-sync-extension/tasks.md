@@ -81,7 +81,7 @@
 
 - [ ] 5. Create cloud storage interface
 
-  - [-] 5.1 Implement Google Drive storage adapter
+  - [x] 5.1 Implement Google Drive storage adapter
 
     - Set up Google Drive API integration
     - Implement file upload and download for sync data
@@ -90,7 +90,7 @@
     - Stage all files and commit with message: "feat: implement Google Drive storage adapter"
     - _Requirements: 5.1, 5.2, 5.3_
 
-  - [ ] 5.2 Implement GitHub storage adapter
+  - [-] 5.2 Implement GitHub storage adapter
 
     - Set up GitHub API integration for private repositories or gists
     - Implement file operations for sync data storage
