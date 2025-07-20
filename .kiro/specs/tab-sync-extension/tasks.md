@@ -34,7 +34,7 @@
 
 - [ ] 3. Build authentication service
 
-  - [-] 3.1 Implement OAuth flow for Google authentication
+  - [x] 3.1 Implement OAuth flow for Google authentication
 
     - Set up Google OAuth configuration and scopes
     - Implement token acquisition and storage using Chrome storage API
@@ -43,7 +43,7 @@
     - Stage all files and commit with message: "feat: implement Google OAuth authentication flow"
     - _Requirements: 1.1, 1.2, 1.3, 5.5_
 
-  - [ ] 3.2 Implement OAuth flow for GitHub authentication
+  - [-] 3.2 Implement OAuth flow for GitHub authentication
 
     - Set up GitHub OAuth configuration and scopes
     - Implement GitHub token handling and storage
