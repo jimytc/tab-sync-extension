@@ -1,110 +1,545 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Tab Sync Settings</title>
+  <title>Tab Sync Extension - Settings</title>
   <link rel="stylesheet" href="options.css">
 </head>
 <body>
   <div class="container">
-    <header>
-      <h1>Tab Sync Settings</h1>
-      <p class="subtitle">Configure your tab synchronization preferences</p>
+    <header class="page-header">
+      <div class="header-content">
+        <div class="header-text">
+          <h1 class="page-title">Tab Sync Settings</h1>
+          <p class="page-subtitle">Configure your tab synchronization preferences and manage your account</p>
+        </div>
+        <div class="header-actions">
+          <button id="sync-now-btn" class="primary-btn" disabled>
+            <svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path fill="currentColor" d="M12,18A6,6 0 0,1 6,12C6,11 6.25,10.03 6.7,9.2L5.24,7.74C4.46,8.97 4,10.43 4,12A8,8 0 0,0 12,20V23L16,19L12,15M12,4V1L8,5L12,9V6A6,6 0 0,1 18,12C18,13 17.75,13.97 17.3,14.8L18.76,16.26C19.54,15.03 20,13.57 20,12A8,8 0 0,0 12,4Z"/>
+            </svg>
+            <span>Sync Now</span>
+          </button>
+          <button id="help-btn" class="secondary-btn" title="Help & Documentation">
+            <svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path fill="currentColor" d="M11,18H13V16H11V18M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,20C7.59,20 4,16.41 4,12C4,7.59 7.59,4 12,4C16.41,4 20,7.59 20,12C20,16.41 16.41,20 12,20M12,6A4,4 0 0,0 8,10H10A2,2 0 0,1 12,8A2,2 0 0,1 14,10C14,12 11,11.75 11,15H13C13,12.75 16,12.5 16,10A4,4 0 0,0 12,6Z"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+      
+      <!-- Status Banner -->
+      <div id="status-banner" class="status-banner hidden">
+        <div class="banner-content">
+          <div class="banner-icon" aria-hidden="true"></div>
+          <div class="banner-text">
+            <strong id="banner-title">Status Update</strong>
+            <p id="banner-message">Everything is working correctly.</p>
+          </div>
+          <button id="banner-close" class="banner-close" aria-label="Close banner">×</button>
+        </div>
+      </div>
     </header>
     
-    <main>
-      <section class="settings-section">
-        <h2>Account</h2>
-        <div class="setting-item">
-          <div class="setting-info">
-            <label>Authentication Status</label>
-            <p id="auth-status-text" class="setting-description">Not authenticated</p>
+    <nav class="settings-nav">
+      <ul class="nav-list" role="tablist">
+        <li><button class="nav-item active" data-section="account" role="tab" aria-selected="true">Account</button></li>
+        <li><button class="nav-item" data-section="sync" role="tab" aria-selected="false">Sync Status</button></li>
+        <li><button class="nav-item" data-section="shortcuts" role="tab" aria-selected="false">Shortcuts</button></li>
+        <li><button class="nav-item" data-section="history" role="tab" aria-selected="false">History</button></li>
+        <li><button class="nav-item" data-section="preferences" role="tab" aria-selected="false">Preferences</button></li>
+        <li><button class="nav-item" data-section="data" role="tab" aria-selected="false">Data</button></li>
+      </ul>
+    </nav>
+    
+    <main class="main-content">
+      <!-- Account Section -->
+      <section id="account-section" class="settings-section active" role="tabpanel">
+        <div class="section-header">
+          <h2 class="section-title">Account Management</h2>
+          <p class="section-description">Manage your authentication and account settings</p>
+        </div>
+        
+        <div class="setting-group">
+          <div class="setting-item">
+            <div class="setting-info">
+              <label class="setting-label">Authentication Status</label>
+              <div class="auth-status-display">
+                <div id="auth-status-indicator" class="status-indicator">
+                  <span class="status-dot" aria-hidden="true"></span>
+                  <span id="auth-status-text">Checking authentication...</span>
+                </div>
+                <div id="auth-details" class="auth-details hidden">
+                  <p><strong>Provider:</strong> <span id="auth-provider-name">Unknown</span></p>
+                  <p><strong>Account:</strong> <span id="auth-account-info">Not available</span></p>
+                  <p><strong>Connected:</strong> <span id="auth-connected-time">Unknown</span></p>
+                </div>
+              </div>
+            </div>
+            <div class="setting-actions">
+              <div id="auth-buttons" class="auth-button-group">
+                <button id="google-auth-btn" class="auth-provider-btn google-btn">
+                  <svg class="provider-icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                  </svg>
+                  <span>Google</span>
+                </button>
+                <button id="github-auth-btn" class="auth-provider-btn github-btn">
+                  <svg class="provider-icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <path fill="currentColor" d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                  </svg>
+                  <span>GitHub</span>
+                </button>
+              </div>
+              <button id="signout-btn" class="danger-btn hidden">
+                <svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path fill="currentColor" d="M16,17V14H9V10H16V7L21,12L16,17M14,2A2,2 0 0,1 16,4V6H14V4H5V20H14V18H16V20A2,2 0 0,1 14,22H5A2,2 0 0,1 3,20V4A2,2 0 0,1 5,2H14Z"/>
+                </svg>
+                <span>Sign Out</span>
+              </button>
+            </div>
           </div>
-          <div class="setting-actions">
-            <button id="auth-btn" class="primary-btn">Sign In</button>
-            <button id="signout-btn" class="secondary-btn hidden">Sign Out</button>
+          
+          <div class="setting-item">
+            <div class="setting-info">
+              <label class="setting-label">Device Information</label>
+              <p class="setting-description">Manage how this device appears in sync operations</p>
+            </div>
+            <div class="setting-actions">
+              <div class="device-info-group">
+                <input type="text" id="device-name-input" class="text-input" placeholder="Enter device name">
+                <button id="update-device-name" class="secondary-btn">Update</button>
+              </div>
+            </div>
           </div>
         </div>
       </section>
       
-      <section class="settings-section">
-        <h2>Sync Status</h2>
-        <div class="sync-status-grid">
+      <!-- Sync Status Section -->
+      <section id="sync-section" class="settings-section" role="tabpanel">
+        <div class="section-header">
+          <h2 class="section-title">Sync Status</h2>
+          <p class="section-description">Monitor your synchronization activity and statistics</p>
+        </div>
+        
+        <div class="status-grid">
           <div class="status-card">
-            <h3>Last Sync</h3>
-            <p id="last-sync-time">Never</p>
+            <div class="card-header">
+              <h3 class="card-title">Last Sync</h3>
+              <svg class="card-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path fill="currentColor" d="M12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22C6.47,22 2,17.5 2,12A10,10 0 0,1 12,2M12.5,7V12.25L17,14.92L16.25,16.15L11,13V7H12.5Z"/>
+              </svg>
+            </div>
+            <p id="last-sync-time" class="card-value">Never</p>
+            <p id="last-sync-relative" class="card-subtitle">No sync performed</p>
           </div>
+          
           <div class="status-card">
-            <h3>Device ID</h3>
-            <p id="device-id">Loading...</p>
+            <div class="card-header">
+              <h3 class="card-title">Device ID</h3>
+              <svg class="card-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path fill="currentColor" d="M17,19H7V5H17M17,1H7C5.89,1 5,1.89 5,3V21C5,22.1 5.9,23 7,23H17C18.1,23 19,22.1 19,21V3C19,1.89 18.1,1 17,1Z"/>
+              </svg>
+            </div>
+            <p id="device-id" class="card-value">Loading...</p>
+            <button id="copy-device-id" class="card-action" title="Copy Device ID">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path fill="currentColor" d="M19,21H8V7H19M19,5H8A2,2 0 0,0 6,7V21A2,2 0 0,0 8,23H19A2,2 0 0,0 21,21V7A2,2 0 0,0 19,5M16,1H4A2,2 0 0,0 2,3V17H4V3H16V1Z"/>
+              </svg>
+            </button>
           </div>
+          
           <div class="status-card">
-            <h3>Tabs Synced</h3>
-            <p id="tabs-synced">0</p>
+            <div class="card-header">
+              <h3 class="card-title">Total Syncs</h3>
+              <svg class="card-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path fill="currentColor" d="M12,18A6,6 0 0,1 6,12C6,11 6.25,10.03 6.7,9.2L5.24,7.74C4.46,8.97 4,10.43 4,12A8,8 0 0,0 12,20V23L16,19L12,15M12,4V1L8,5L12,9V6A6,6 0 0,1 18,12C18,13 17.75,13.97 17.3,14.8L18.76,16.26C19.54,15.03 20,13.57 20,12A8,8 0 0,0 12,4Z"/>
+              </svg>
+            </div>
+            <p id="total-syncs" class="card-value">0</p>
+            <p id="success-rate" class="card-subtitle">0% success rate</p>
           </div>
+          
           <div class="status-card">
-            <h3>Storage Provider</h3>
-            <p id="storage-provider">None</p>
+            <div class="card-header">
+              <h3 class="card-title">Storage Provider</h3>
+              <svg class="card-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path fill="currentColor" d="M12,3C7.58,3 4,4.79 4,7C4,9.21 7.58,11 12,11C16.42,11 20,9.21 20,7C20,4.79 16.42,3 12,3M4,9V12C4,14.21 7.58,16 12,16C16.42,16 20,14.21 20,12V9C20,11.21 16.42,13 12,13C7.58,13 4,11.21 4,9M4,14V17C4,19.21 7.58,21 12,21C16.42,21 20,19.21 20,17V14C20,16.21 16.42,18 12,18C7.58,18 4,16.21 4,14Z"/>
+              </svg>
+            </div>
+            <p id="storage-provider" class="card-value">None</p>
+            <p id="storage-usage" class="card-subtitle">No data stored</p>
           </div>
+        </div>
+        
+        <div class="sync-actions">
+          <button id="test-connection-btn" class="secondary-btn">
+            <svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path fill="currentColor" d="M12,1L3,5V11C3,16.55 6.84,21.74 12,23C17.16,21.74 21,16.55 21,11V5L12,1M12,7C13.4,7 14.8,8.6 14.8,10V11.5C15.4,11.5 16,12.1 16,12.7V16.2C16,16.8 15.4,17.3 14.8,17.3H9.2C8.6,17.3 8,16.8 8,16.2V12.8C8,12.2 8.6,11.7 9.2,11.7V10C9.2,8.6 10.6,7 12,7M12,8.2C11.2,8.2 10.5,8.7 10.5,9.5V11.5H13.5V9.5C13.5,8.7 12.8,8.2 12,8.2Z"/>
+            </svg>
+            <span>Test Connection</span>
+          </button>
+          <button id="force-sync-btn" class="secondary-btn" disabled>
+            <svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path fill="currentColor" d="M12,18A6,6 0 0,1 6,12C6,11 6.25,10.03 6.7,9.2L5.24,7.74C4.46,8.97 4,10.43 4,12A8,8 0 0,0 12,20V23L16,19L12,15M12,4V1L8,5L12,9V6A6,6 0 0,1 18,12C18,13 17.75,13.97 17.3,14.8L18.76,16.26C19.54,15.03 20,13.57 20,12A8,8 0 0,0 12,4Z"/>
+            </svg>
+            <span>Force Sync</span>
+          </button>
         </div>
       </section>
       
-      <section class="settings-section">
-        <h2>Keyboard Shortcuts</h2>
-        <div class="setting-item">
-          <div class="setting-info">
-            <label>Trigger Sync</label>
-            <p class="setting-description">Keyboard shortcut to trigger tab synchronization</p>
+      <!-- Keyboard Shortcuts Section -->
+      <section id="shortcuts-section" class="settings-section" role="tabpanel">
+        <div class="section-header">
+          <h2 class="section-title">Keyboard Shortcuts</h2>
+          <p class="section-description">Configure keyboard shortcuts for quick access to sync functions</p>
+        </div>
+        
+        <div class="shortcuts-list">
+          <div class="shortcut-item">
+            <div class="shortcut-info">
+              <label class="shortcut-label">Trigger Sync</label>
+              <p class="shortcut-description">Manually trigger tab synchronization</p>
+            </div>
+            <div class="shortcut-controls">
+              <div class="shortcut-display">
+                <kbd id="sync-shortcut-display" class="shortcut-key">Ctrl+Shift+S</kbd>
+                <span id="shortcut-status" class="shortcut-status">Active</span>
+              </div>
+              <div class="shortcut-actions">
+                <button id="edit-shortcut-btn" class="secondary-btn">Edit</button>
+                <button id="reset-shortcut-btn" class="secondary-btn">Reset</button>
+              </div>
+            </div>
           </div>
-          <div class="setting-actions">
-            <input type="text" id="sync-shortcut" class="shortcut-input" readonly value="Ctrl+Shift+S">
-            <button id="edit-shortcut" class="secondary-btn">Edit</button>
+          
+          <div class="shortcut-item">
+            <div class="shortcut-info">
+              <label class="shortcut-label">Open Settings</label>
+              <p class="shortcut-description">Quick access to extension settings</p>
+            </div>
+            <div class="shortcut-controls">
+              <div class="shortcut-display">
+                <kbd id="settings-shortcut-display" class="shortcut-key">Not set</kbd>
+                <span class="shortcut-status inactive">Inactive</span>
+              </div>
+              <div class="shortcut-actions">
+                <button id="edit-settings-shortcut-btn" class="secondary-btn">Edit</button>
+              </div>
+            </div>
           </div>
+        </div>
+        
+        <div class="shortcut-help">
+          <h3>Shortcut Configuration Help</h3>
+          <ul>
+            <li>Click "Edit" to modify shortcuts in Chrome's extension settings</li>
+            <li>Shortcuts must include at least one modifier key (Ctrl, Alt, Shift)</li>
+            <li>Some combinations may conflict with browser shortcuts</li>
+            <li>Changes take effect immediately after saving</li>
+          </ul>
         </div>
       </section>
       
-      <section class="settings-section">
-        <h2>Sync History</h2>
+      <!-- History Section -->
+      <section id="history-section" class="settings-section" role="tabpanel">
+        <div class="section-header">
+          <h2 class="section-title">Sync History</h2>
+          <p class="section-description">View detailed history of all synchronization operations</p>
+        </div>
+        
         <div class="history-controls">
-          <button id="refresh-history" class="secondary-btn">Refresh</button>
-          <button id="clear-history" class="secondary-btn">Clear History</button>
+          <div class="history-filters">
+            <select id="history-filter" class="filter-select">
+              <option value="all">All Operations</option>
+              <option value="success">Successful Only</option>
+              <option value="failed">Failed Only</option>
+              <option value="conflicts">With Conflicts</option>
+            </select>
+            <select id="history-timeframe" class="filter-select">
+              <option value="all">All Time</option>
+              <option value="today">Today</option>
+              <option value="week">This Week</option>
+              <option value="month">This Month</option>
+            </select>
+            <input type="search" id="history-search" class="search-input" placeholder="Search history...">
+          </div>
+          <div class="history-actions">
+            <button id="refresh-history-btn" class="secondary-btn">
+              <svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path fill="currentColor" d="M17.65,6.35C16.2,4.9 14.21,4 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20C15.73,20 18.84,17.45 19.73,14H17.65C16.83,16.33 14.61,18 12,18A6,6 0 0,1 6,12A6,6 0 0,1 12,6C13.66,6 15.14,6.69 16.22,7.78L13,11H20V4L17.65,6.35Z"/>
+              </svg>
+              <span>Refresh</span>
+            </button>
+            <button id="export-history-btn" class="secondary-btn">
+              <svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path fill="currentColor" d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
+              </svg>
+              <span>Export</span>
+            </button>
+            <button id="clear-history-btn" class="danger-btn">
+              <svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path fill="currentColor" d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z"/>
+              </svg>
+              <span>Clear</span>
+            </button>
+          </div>
         </div>
+        
         <div class="history-table-container">
-          <table id="history-table">
+          <table id="history-table" class="history-table">
             <thead>
               <tr>
-                <th>Date</th>
-                <th>Device</th>
-                <th>Action</th>
-                <th>Tabs</th>
-                <th>Status</th>
+                <th class="sortable" data-sort="timestamp">
+                  <span>Date & Time</span>
+                  <svg class="sort-icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <path fill="currentColor" d="M18,21L14,17H17V7H14L18,3L22,7H19V17H22M2,19V17H12V19M2,13V11H9V13M2,7V5H6V7H2Z"/>
+                  </svg>
+                </th>
+                <th class="sortable" data-sort="device">
+                  <span>Device</span>
+                  <svg class="sort-icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <path fill="currentColor" d="M18,21L14,17H17V7H14L18,3L22,7H19V17H22M2,19V17H12V19M2,13V11H9V13M2,7V5H6V7H2Z"/>
+                  </svg>
+                </th>
+                <th class="sortable" data-sort="action">
+                  <span>Action</span>
+                  <svg class="sort-icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <path fill="currentColor" d="M18,21L14,17H17V7H14L18,3L22,7H19V17H22M2,19V17H12V19M2,13V11H9V13M2,7V5H6V7H2Z"/>
+                  </svg>
+                </th>
+                <th class="sortable" data-sort="tabs">
+                  <span>Tabs</span>
+                  <svg class="sort-icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <path fill="currentColor" d="M18,21L14,17H17V7H14L18,3L22,7H19V17H22M2,19V17H12V19M2,13V11H9V13M2,7V5H6V7H2Z"/>
+                  </svg>
+                </th>
+                <th class="sortable" data-sort="status">
+                  <span>Status</span>
+                  <svg class="sort-icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <path fill="currentColor" d="M18,21L14,17H17V7H14L18,3L22,7H19V17H22M2,19V17H12V19M2,13V11H9V13M2,7V5H6V7H2Z"/>
+                  </svg>
+                </th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody id="history-tbody">
-              <tr>
-                <td colspan="5" class="no-data">No sync history available</td>
+              <tr class="no-data-row">
+                <td colspan="6" class="no-data">
+                  <div class="no-data-content">
+                    <svg class="no-data-icon" viewBox="0 0 24 24" aria-hidden="true">
+                      <path fill="currentColor" d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,17A5,5 0 0,1 7,12A5,5 0 0,1 12,7A5,5 0 0,1 17,12A5,5 0 0,1 12,17M12,9A3,3 0 0,0 9,12A3,3 0 0,0 12,15A3,3 0 0,0 15,12A3,3 0 0,0 12,9Z"/>
+                    </svg>
+                    <p>No sync history available</p>
+                    <p class="no-data-subtitle">Sync operations will appear here once you start using the extension</p>
+                  </div>
+                </td>
               </tr>
             </tbody>
           </table>
         </div>
+        
+        <div id="history-pagination" class="pagination hidden">
+          <button id="prev-page" class="pagination-btn" disabled>Previous</button>
+          <span id="page-info" class="page-info">Page 1 of 1</span>
+          <button id="next-page" class="pagination-btn" disabled>Next</button>
+        </div>
       </section>
       
-      <section class="settings-section">
-        <h2>Data Management</h2>
-        <div class="setting-item">
-          <div class="setting-info">
-            <label>Clear Local Data</label>
-            <p class="setting-description">Remove all locally stored sync data and settings</p>
+      <!-- Preferences Section -->
+      <section id="preferences-section" class="settings-section" role="tabpanel">
+        <div class="section-header">
+          <h2 class="section-title">Sync Preferences</h2>
+          <p class="section-description">Configure how tab synchronization behaves</p>
+        </div>
+        
+        <div class="preference-groups">
+          <div class="preference-group">
+            <h3 class="group-title">Sync Behavior</h3>
+            <div class="setting-item">
+              <div class="setting-info">
+                <label class="setting-label">Confirmation Dialog</label>
+                <p class="setting-description">Show confirmation before syncing tabs</p>
+              </div>
+              <div class="setting-actions">
+                <label class="toggle-switch">
+                  <input type="checkbox" id="confirm-sync-toggle" checked>
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+            </div>
+            
+            <div class="setting-item">
+              <div class="setting-info">
+                <label class="setting-label">Auto-merge</label>
+                <p class="setting-description">Automatically merge non-conflicting changes</p>
+              </div>
+              <div class="setting-actions">
+                <label class="toggle-switch">
+                  <input type="checkbox" id="auto-merge-toggle" checked>
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+            </div>
+            
+            <div class="setting-item">
+              <div class="setting-info">
+                <label class="setting-label">Sync Notifications</label>
+                <p class="setting-description">Show notifications for sync operations</p>
+              </div>
+              <div class="setting-actions">
+                <label class="toggle-switch">
+                  <input type="checkbox" id="sync-notifications-toggle" checked>
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+            </div>
           </div>
-          <div class="setting-actions">
-            <button id="clear-data" class="danger-btn">Clear Data</button>
+          
+          <div class="preference-group">
+            <h3 class="group-title">Data Handling</h3>
+            <div class="setting-item">
+              <div class="setting-info">
+                <label class="setting-label">Include Incognito Tabs</label>
+                <p class="setting-description">Sync tabs from incognito windows (requires permission)</p>
+              </div>
+              <div class="setting-actions">
+                <label class="toggle-switch">
+                  <input type="checkbox" id="include-incognito-toggle">
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+            </div>
+            
+            <div class="setting-item">
+              <div class="setting-info">
+                <label class="setting-label">History Retention</label>
+                <p class="setting-description">How long to keep sync history</p>
+              </div>
+              <div class="setting-actions">
+                <select id="history-retention-select" class="select-input">
+                  <option value="7">1 Week</option>
+                  <option value="30" selected>1 Month</option>
+                  <option value="90">3 Months</option>
+                  <option value="365">1 Year</option>
+                  <option value="0">Forever</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+      
+      <!-- Data Management Section -->
+      <section id="data-section" class="settings-section" role="tabpanel">
+        <div class="section-header">
+          <h2 class="section-title">Data Management</h2>
+          <p class="section-description">Manage your local and cloud data</p>
+        </div>
+        
+        <div class="data-actions">
+          <div class="action-group">
+            <h3 class="group-title">Local Data</h3>
+            <div class="action-item">
+              <div class="action-info">
+                <label class="action-label">Clear Cache</label>
+                <p class="action-description">Remove cached sync data and temporary files</p>
+              </div>
+              <button id="clear-cache-btn" class="secondary-btn">Clear Cache</button>
+            </div>
+            
+            <div class="action-item">
+              <div class="action-info">
+                <label class="action-label">Reset Settings</label>
+                <p class="action-description">Reset all extension settings to defaults</p>
+              </div>
+              <button id="reset-settings-btn" class="secondary-btn">Reset Settings</button>
+            </div>
+            
+            <div class="action-item danger">
+              <div class="action-info">
+                <label class="action-label">Clear All Data</label>
+                <p class="action-description">Remove all local data, settings, and sign out</p>
+              </div>
+              <button id="clear-all-data-btn" class="danger-btn">Clear All Data</button>
+            </div>
+          </div>
+          
+          <div class="action-group">
+            <h3 class="group-title">Cloud Data</h3>
+            <div class="action-item">
+              <div class="action-info">
+                <label class="action-label">Download Backup</label>
+                <p class="action-description">Download a backup of your sync data</p>
+              </div>
+              <button id="download-backup-btn" class="secondary-btn" disabled>Download Backup</button>
+            </div>
+            
+            <div class="action-item">
+              <div class="action-info">
+                <label class="action-label">Upload Backup</label>
+                <p class="action-description">Restore data from a backup file</p>
+              </div>
+              <div class="upload-group">
+                <input type="file" id="backup-file-input" accept=".json" class="file-input">
+                <button id="upload-backup-btn" class="secondary-btn" disabled>Upload Backup</button>
+              </div>
+            </div>
+            
+            <div class="action-item danger">
+              <div class="action-info">
+                <label class="action-label">Delete Cloud Data</label>
+                <p class="action-description">Permanently delete all cloud-stored sync data</p>
+              </div>
+              <button id="delete-cloud-data-btn" class="danger-btn" disabled>Delete Cloud Data</button>
+            </div>
           </div>
         </div>
       </section>
     </main>
+    
+    <footer class="page-footer">
+      <div class="footer-content">
+        <div class="footer-info">
+          <p class="extension-info">
+            <strong>Tab Sync Extension</strong> 
+            <span id="extension-version">v1.0.0</span>
+          </p>
+          <p class="footer-links">
+            <a href="#" id="privacy-link">Privacy Policy</a> • 
+            <a href="#" id="support-link">Support</a> • 
+            <a href="#" id="feedback-link">Feedback</a>
+          </p>
+        </div>
+        <div class="footer-actions">
+          <button id="reset-to-defaults-btn" class="secondary-btn">Reset to Defaults</button>
+        </div>
+      </div>
+    </footer>
   </div>
   
-  <script src="options.js"></script>
+  <!-- Confirmation Dialog -->
+  <div id="confirmation-dialog" class="dialog-overlay hidden" role="dialog" aria-modal="true">
+    <div class="dialog">
+      <div class="dialog-header">
+        <h3 id="dialog-title" class="dialog-title">Confirm Action</h3>
+        <button id="dialog-close" class="dialog-close" aria-label="Close dialog">×</button>
+      </div>
+      <div class="dialog-content">
+        <p id="dialog-message">Are you sure you want to perform this action?</p>
+        <div id="dialog-details" class="dialog-details hidden"></div>
+      </div>
+      <div class="dialog-actions">
+        <button id="dialog-cancel" class="secondary-btn">Cancel</button>
+        <button id="dialog-confirm" class="primary-btn">Confirm</button>
+      </div>
+    </div>
+  </div>
+  
+  <script type="module" src="options.js"></script>
 </body>
 </html>
