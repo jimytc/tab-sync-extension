@@ -62,7 +62,7 @@
 
 - [ ] 4. Implement tab management functionality
 
-  - [-] 4.1 Create Chrome tabs API integration
+  - [x] 4.1 Create Chrome tabs API integration
 
     - Implement functions to query and serialize current tabs
     - Create tab opening and closing utilities
@@ -71,7 +71,7 @@
     - Stage all files and commit with message: "feat: implement Chrome tabs API integration and utilities"
     - _Requirements: 2.1, 4.4, 7.2_
 
-  - [ ] 4.2 Build tab data serialization and validation
+  - [-] 4.2 Build tab data serialization and validation
     - Implement tab data serialization with metadata
     - Create deserialization with error handling
     - Add data validation for tab integrity
