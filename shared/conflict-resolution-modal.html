@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Resolve Tab Sync Conflicts</title>
+  <link rel="stylesheet" href="conflict-resolution-modal.css">
+</head>
+<body>
+  <div id="conflict-modal" class="modal-overlay">
+    <div class="modal-container">
+      <div class="modal-header">
+        <h2>Resolve Sync Conflicts</h2>
+        <p class="conflict-summary">
+          <span id="conflict-count">0</span> conflicts found during synchronization
+        </p>
+        <button id="close-modal" class="close-button" aria-label="Close modal">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <!-- Conflict List -->
+        <div id="conflict-list" class="conflict-list">
+          <!-- Conflicts will be dynamically populated here -->
+        </div>
+
+        <!-- Batch Actions -->
+        <div class="batch-actions">
+          <div class="batch-selection">
+            <label>
+              <input type="checkbox" id="select-all-conflicts"> Select All
+            </label>
+            <span id="selected-count">0 selected</span>
+          </div>
+          <div class="batch-buttons">
+            <button id="batch-local-wins" class="batch-btn">Keep Local</button>
+            <button id="batch-remote-wins" class="batch-btn">Keep Remote</button>
+            <button id="batch-merge" class="batch-btn">Auto Merge</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <div class="resolution-preview">
+          <button id="preview-changes" class="preview-btn">Preview Changes</button>
+          <span id="preview-summary"></span>
+        </div>
+        <div class="action-buttons">
+          <button id="cancel-resolution" class="cancel-btn">Cancel</button>
+          <button id="apply-resolution" class="apply-btn" disabled>Apply Resolution</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Conflict Item Template -->
+  <template id="conflict-item-template">
+    <div class="conflict-item" data-conflict-id="">
+      <div class="conflict-header">
+        <label class="conflict-checkbox">
+          <input type="checkbox" class="conflict-select">
+        </label>
+        <div class="conflict-info">
+          <h3 class="conflict-title"></h3>
+          <div class="conflict-meta">
+            <span class="conflict-type"></span>
+            <span class="conflict-severity"></span>
+          </div>
+        </div>
+        <button class="expand-conflict" aria-label="Expand conflict details">
+          <svg width="16" height="16" viewBox="0 0 16 16">
+            <path d="M8 12l-4-4h8l-4 4z"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="conflict-details" style="display: none;">
+        <div class="conflict-description"></div>
+        
+        <!-- Tab Comparison View -->
+        <div class="tab-comparison">
+          <div class="comparison-side local-side">
+            <h4>Local Device</h4>
+            <div class="tab-list local-tabs"></div>
+          </div>
+          <div class="comparison-divider"></div>
+          <div class="comparison-side remote-side">
+            <h4>Remote Device</h4>
+            <div class="tab-list remote-tabs"></div>
+          </div>
+        </div>
+
+        <!-- Resolution Options -->
+        <div class="resolution-options">
+          <h4>Resolution Strategy</h4>
+          <div class="resolution-buttons">
+            <!-- Resolution buttons will be populated based on conflict type -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <!-- Tab Item Template -->
+  <template id="tab-item-template">
+    <div class="tab-item">
+      <div class="tab-favicon">
+        <img src="" alt="" onerror="this.style.display='none'">
+        <div class="favicon-placeholder">🌐</div>
+      </div>
+      <div class="tab-info">
+        <div class="tab-title"></div>
+        <div class="tab-url"></div>
+        <div class="tab-meta"></div>
+      </div>
+      <div class="tab-actions">
+        <label class="tab-select-label">
+          <input type="checkbox" class="tab-select">
+          <span>Keep</span>
+        </label>
+      </div>
+    </div>
+  </template>
+
+  <!-- Resolution Button Template -->
+  <template id="resolution-button-template">
+    <button class="resolution-btn" data-strategy="">
+      <span class="strategy-name"></span>
+      <span class="strategy-description"></span>
+    </button>
+  </template>
+
+  <script src="conflict-resolution-modal.js"></script>
+</body>
+</html>
