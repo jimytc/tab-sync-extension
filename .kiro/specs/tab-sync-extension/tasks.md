@@ -134,7 +134,7 @@
 
 - [ ] 7. Create background service worker
 
-  - [-] 7.1 Implement keyboard shortcut handling
+  - [x] 7.1 Implement keyboard shortcut handling
 
     - Register keyboard shortcuts in manifest and background script
     - Create shortcut event listeners and sync triggering
@@ -142,7 +142,7 @@
     - Write unit tests for keyboard shortcut functionality
     - _Requirements: 2.1, 6.1, 6.3, 6.4_
 
-  - [ ] 7.2 Build background sync coordination
+  - [-] 7.2 Build background sync coordination
     - Implement background sync orchestration
     - Create sync queue management for offline scenarios
     - Add sync progress tracking and status updates
