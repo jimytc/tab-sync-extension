@@ -107,7 +107,7 @@
     - Stage all files and commit with message: "feat: create unified storage interface with encryption"
     - _Requirements: 5.1, 5.2, 5.4_
 
-- [ ] 6. Build sync engine with conflict resolution
+- [x] 6. Build sync engine with conflict resolution
 
   - [x] 6.1 Implement basic sync operations
 
@@ -125,7 +125,7 @@
     - Write unit tests for conflict detection scenarios
     - _Requirements: 4.1, 4.2, 7.3_
 
-  - [-] 6.3 Build merge engine for conflict resolution
+  - [x] 6.3 Build merge engine for conflict resolution
     - Implement automatic merge for non-conflicting changes
     - Create merge strategies for different conflict types
     - Add user choice application for manual conflict resolution
@@ -134,7 +134,7 @@
 
 - [ ] 7. Create background service worker
 
-  - [ ] 7.1 Implement keyboard shortcut handling
+  - [-] 7.1 Implement keyboard shortcut handling
 
     - Register keyboard shortcuts in manifest and background script
     - Create shortcut event listeners and sync triggering
