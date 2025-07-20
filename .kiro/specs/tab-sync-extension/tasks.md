@@ -32,7 +32,7 @@
     - Stage all files and commit with message: "feat: implement device identification and metadata utilities"
     - _Requirements: 4.4, 7.1, 7.4_
 
-- [ ] 3. Build authentication service
+- [x] 3. Build authentication service
 
   - [x] 3.1 Implement OAuth flow for Google authentication
 
@@ -52,7 +52,7 @@
     - Stage all files and commit with message: "feat: implement GitHub OAuth authentication flow"
     - _Requirements: 1.1, 1.2, 1.3, 5.5_
 
-  - [-] 3.3 Create unified authentication service interface
+  - [x] 3.3 Create unified authentication service interface
     - Implement authentication service that supports both providers
     - Add sign-out functionality with data cleanup
     - Create authentication state management
@@ -62,7 +62,7 @@
 
 - [ ] 4. Implement tab management functionality
 
-  - [ ] 4.1 Create Chrome tabs API integration
+  - [-] 4.1 Create Chrome tabs API integration
 
     - Implement functions to query and serialize current tabs
     - Create tab opening and closing utilities
