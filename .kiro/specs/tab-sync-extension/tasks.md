@@ -6,7 +6,7 @@
 - Use descriptive commit messages that reference the task number
 - Ensure all files are properly staged before committing
 
-- [-] 1. Set up Chrome extension project structure and manifest
+- [x] 1. Set up Chrome extension project structure and manifest
   - Create directory structure for background, popup, options, and shared modules
   - Write manifest.json with required permissions and API declarations
   - Set up build configuration and development environment
@@ -14,7 +14,7 @@
   - _Requirements: 1.1, 2.1, 3.1, 6.1_
 
 - [ ] 2. Implement core data models and utilities
-  - [ ] 2.1 Create TypeScript interfaces for tab data and sync structures
+  - [-] 2.1 Create TypeScript interfaces for tab data and sync structures
     - Define TabData, SyncData, ConflictData, and related interfaces
     - Implement data validation functions for type safety
     - Write unit tests for data model validation
