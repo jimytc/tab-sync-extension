@@ -341,9 +341,26 @@ export class SyncEngine {
           return;
         }
 
-        // For now, default to local wins strategy
-        // In a full implementation, this would present conflicts to user
-        await this.resolveConflictsLocalWins(syncResult, localTabs, remoteSyncData, conflicts, options);
+        // Check if we should show UI for conflict resolution
+        if (options.showConflictUI !== false && conflicts.length > 0) {
+          // Present conflicts to user for resolution
+          const resolutionChoices = await this.showConflictResolutionUI(conflicts, {
+            localTabs,
+            remoteSyncData,
+            syncResult
+          });
+          
+          if (resolutionChoices) {
+            // User provided resolutions, use advanced merge
+            await this.performAdvancedMerge(syncResult, localTabs, remoteSyncData, conflicts, resolutionChoices, options);
+          } else {
+            // User cancelled or no resolutions provided, use default strategy
+            await this.resolveConflictsLocalWins(syncResult, localTabs, remoteSyncData, conflicts, options);
+          }
+        } else {
+          // No UI or conflicts, use default strategy
+          await this.resolveConflictsLocalWins(syncResult, localTabs, remoteSyncData, conflicts, options);
+        }
       }
 
     } catch (error) {
@@ -394,6 +411,98 @@ export class SyncEngine {
     } catch (error) {
       log('error', 'Simple merge failed', { error: error.message });
       throw error;
+    }
+  }
+
+  /**
+   * Show conflict resolution UI to user
+   * @param {Object[]} conflicts - Array of conflicts
+   * @param {Object} context - Context data for resolution
+   * @returns {Promise<Object|null>} Resolution choices or null if cancelled
+   */
+  async showConflictResolutionUI(conflicts, context = {}) {
+    try {
+      log('info', 'Showing conflict resolution UI', { conflictCount: conflicts.length });
+
+      return new Promise((resolve) => {
+        // Check if we're in a browser extension context
+        if (typeof chrome !== 'undefined' && chrome.windows) {
+          // Create a new window for conflict resolution
+          this.createConflictResolutionWindow(conflicts, context, resolve);
+        } else {
+          // Fallback to programmatic resolution for testing/non-extension contexts
+          log('warn', 'No UI context available, using default resolution');
+          resolve(null);
+        }
+      });
+
+    } catch (error) {
+      log('error', 'Failed to show conflict resolution UI', { error: error.message });
+      return null;
+    }
+  }
+
+  /**
+   * Create conflict resolution window
+   * @param {Object[]} conflicts - Array of conflicts
+   * @param {Object} context - Context data
+   * @param {Function} resolve - Promise resolve function
+   */
+  async createConflictResolutionWindow(conflicts, context, resolve) {
+    try {
+      // Create window with conflict resolution modal
+      const window = await chrome.windows.create({
+        url: chrome.runtime.getURL('shared/conflict-resolution-modal.html'),
+        type: 'popup',
+        width: 1000,
+        height: 700,
+        focused: true
+      });
+
+      // Store conflict data for the modal
+      const conflictData = {
+        conflicts,
+        context,
+        deviceId: this.deviceId,
+        timestamp: Date.now()
+      };
+
+      // Store in session storage for the modal to access
+      await chrome.storage.session.set({
+        [`conflict_data_${window.id}`]: conflictData
+      });
+
+      // Listen for resolution result
+      const messageListener = (message, sender, sendResponse) => {
+        if (sender.tab?.windowId === window.id) {
+          if (message.type === 'conflict-resolution-complete') {
+            chrome.runtime.onMessage.removeListener(messageListener);
+            chrome.windows.remove(window.id);
+            resolve(message.resolutionChoices);
+          } else if (message.type === 'conflict-resolution-cancelled') {
+            chrome.runtime.onMessage.removeListener(messageListener);
+            chrome.windows.remove(window.id);
+            resolve(null);
+          }
+        }
+      };
+
+      chrome.runtime.onMessage.addListener(messageListener);
+
+      // Handle window closed without resolution
+      const windowRemovedListener = (windowId) => {
+        if (windowId === window.id) {
+          chrome.windows.onRemoved.removeListener(windowRemovedListener);
+          chrome.runtime.onMessage.removeListener(messageListener);
+          resolve(null);
+        }
+      };
+
+      chrome.windows.onRemoved.addListener(windowRemovedListener);
+
+    } catch (error) {
+      log('error', 'Failed to create conflict resolution window', { error: error.message });
+      resolve(null);
     }
   }
 

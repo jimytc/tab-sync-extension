@@ -72,6 +72,8 @@ class ConflictResolutionModal {
     this.conflicts = conflicts || [];
     this.resolutionChoices = {};
     this.selectedConflicts.clear();
+    this.context = options.context || {};
+    this.deviceId = options.deviceId || 'local-device';
     
     if (!this.isInitialized) {
       this.initialize();
@@ -425,13 +427,13 @@ class ConflictResolutionModal {
       // Apply resolutions
       const result = await this.applyResolutions();
       
-      // Notify parent window
-      if (window.opener && window.opener.postMessage) {
-        window.opener.postMessage({
+      // Notify background script
+      if (typeof chrome !== 'undefined' && chrome.runtime) {
+        chrome.runtime.sendMessage({
           type: 'conflict-resolution-complete',
           result: result,
           resolutionChoices: this.resolutionChoices
-        }, '*');
+        });
       }
       
       this.hide();
@@ -450,10 +452,10 @@ class ConflictResolutionModal {
    * Handle cancel
    */
   handleCancel() {
-    if (window.opener && window.opener.postMessage) {
-      window.opener.postMessage({
+    if (typeof chrome !== 'undefined' && chrome.runtime) {
+      chrome.runtime.sendMessage({
         type: 'conflict-resolution-cancelled'
-      }, '*');
+      });
     }
     
     this.hide();
@@ -646,14 +648,40 @@ class ConflictResolutionModal {
   }
 
   getLocalDeviceId() {
-    // This would get the actual local device ID
-    return 'local-device';
+    // Use the device ID from context or fallback
+    return this.deviceId || 'local-device';
   }
 }
 
 // Initialize modal when DOM is loaded
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   window.conflictResolutionModal = new ConflictResolutionModal();
+  
+  // Load conflict data from Chrome storage if available
+  if (typeof chrome !== 'undefined' && chrome.storage) {
+    try {
+      // Get current window ID
+      const currentWindow = await chrome.windows.getCurrent();
+      const conflictDataKey = `conflict_data_${currentWindow.id}`;
+      
+      // Load conflict data
+      const result = await chrome.storage.session.get(conflictDataKey);
+      const conflictData = result[conflictDataKey];
+      
+      if (conflictData) {
+        // Show conflicts in modal
+        window.conflictResolutionModal.show(conflictData.conflicts, {
+          context: conflictData.context,
+          deviceId: conflictData.deviceId
+        });
+        
+        // Clean up storage
+        await chrome.storage.session.remove(conflictDataKey);
+      }
+    } catch (error) {
+      console.error('Failed to load conflict data:', error);
+    }
+  }
 });
 
 // Export for use in other modules
