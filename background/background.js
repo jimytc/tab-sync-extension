@@ -11,6 +11,7 @@ import {
 } from '../shared/utils.js';
 import { syncEngine } from '../shared/sync-engine.js';
 import { authService } from '../shared/auth/auth-service.js';
+import { errorHandler, ErrorCategory, ErrorSeverity, withErrorHandling } from '../shared/error-handler.js';
 
 console.log('Tab Sync Extension background service worker loaded');
 
@@ -22,7 +23,10 @@ const SYNC_DEBOUNCE_TIME = 2000; // 2 seconds
 
 // Initialize background service
 async function initializeBackground() {
-  try {
+  return withErrorHandling(async () => {
+    // Initialize error handler first
+    await errorHandler.initialize();
+    
     // Initialize core services
     await authService.initialize();
     await syncEngine.initialize();
@@ -31,16 +35,23 @@ async function initializeBackground() {
     await registerShortcutHandlers();
     
     log('info', 'Background service initialized successfully');
-  } catch (error) {
+  }, {
+    category: ErrorCategory.SYSTEM,
+    severity: ErrorSeverity.CRITICAL,
+    source: 'background_initialize',
+    recoverable: true,
+    userVisible: true
+  })().catch(error => {
     log('error', 'Failed to initialize background service', { error: error.message });
-  }
+    // Don't throw to prevent extension from failing completely
+  });
 }
 
 // Handle extension installation
 chrome.runtime.onInstalled.addListener(async (details) => {
   log('info', 'Extension installed', { reason: details.reason });
   
-  try {
+  return withErrorHandling(async () => {
     // Initialize device metadata
     const deviceMetadata = await getDeviceMetadata();
     const deviceId = await getOrCreateDeviceId();
@@ -74,10 +85,17 @@ chrome.runtime.onInstalled.addListener(async (details) => {
     
     // Initialize background services
     await initializeBackground();
-    
-  } catch (error) {
+  }, {
+    category: ErrorCategory.SYSTEM,
+    severity: ErrorSeverity.CRITICAL,
+    source: 'extension_install',
+    context: { reason: details.reason },
+    recoverable: true,
+    userVisible: true
+  })().catch(error => {
     log('error', 'Failed to initialize extension', { error: error.message });
-  }
+    // Don't throw to prevent extension from failing completely
+  });
 });
 
 // Handle extension startup

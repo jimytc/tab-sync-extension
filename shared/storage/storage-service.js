@@ -4,6 +4,7 @@
 import { GoogleDriveStorage } from './google-drive-storage.js';
 import { GitHubStorage } from './github-storage.js';
 import { log, createError, retryWithBackoff } from '../utils.js';
+import { errorHandler, ErrorCategory, ErrorSeverity, withErrorHandling } from '../error-handler.js';
 
 /**
  * Unified storage service class
@@ -24,7 +25,7 @@ export class StorageService {
    * @returns {Promise<void>}
    */
   async initialize(provider) {
-    try {
+    return withErrorHandling(async () => {
       if (!this.isValidProvider(provider)) {
         throw createError(`Invalid storage provider: ${provider}`, 'INVALID_PROVIDER');
       }
@@ -36,10 +37,14 @@ export class StorageService {
       this.initialized = true;
 
       log('info', 'Storage service initialized', { provider });
-    } catch (error) {
-      log('error', 'Failed to initialize storage service', { provider, error: error.message });
-      throw error;
-    }
+    }, {
+      category: ErrorCategory.STORAGE,
+      severity: ErrorSeverity.HIGH,
+      source: 'storage_service_initialize',
+      context: { provider },
+      recoverable: true,
+      userVisible: true
+    })();
   }
 
   /**
@@ -47,7 +52,7 @@ export class StorageService {
    * @returns {Promise<void>}
    */
   async autoInitialize() {
-    try {
+    return withErrorHandling(async () => {
       // Check which provider is currently authenticated
       const authStatus = await this.getAuthenticationStatus();
       
@@ -58,10 +63,13 @@ export class StorageService {
       } else {
         throw createError('No authenticated storage provider available', 'NO_AUTH_PROVIDER');
       }
-    } catch (error) {
-      log('error', 'Failed to auto-initialize storage service', { error: error.message });
-      throw error;
-    }
+    }, {
+      category: ErrorCategory.STORAGE,
+      severity: ErrorSeverity.HIGH,
+      source: 'storage_service_auto_initialize',
+      recoverable: true,
+      userVisible: true
+    })();
   }
 
   /**
@@ -72,7 +80,7 @@ export class StorageService {
    * @returns {Promise<Object>} Storage result
    */
   async store(fileName, data, options = {}) {
-    try {
+    return withErrorHandling(async () => {
       this.ensureInitialized();
       
       const storageAdapter = this.providers[this.currentProvider];
@@ -97,14 +105,14 @@ export class StorageService {
       });
 
       return result;
-    } catch (error) {
-      log('error', 'Failed to store data', { 
-        fileName, 
-        provider: this.currentProvider,
-        error: error.message 
-      });
-      throw createError('Storage operation failed', 'STORAGE_FAILED', { fileName, error });
-    }
+    }, {
+      category: ErrorCategory.STORAGE,
+      severity: ErrorSeverity.HIGH,
+      source: 'storage_service_store',
+      context: { fileName, provider: this.currentProvider },
+      recoverable: true,
+      userVisible: true
+    })();
   }
 
   /**
@@ -114,7 +122,7 @@ export class StorageService {
    * @returns {Promise<Object>} Retrieved data
    */
   async retrieve(fileName, options = {}) {
-    try {
+    return withErrorHandling(async () => {
       this.ensureInitialized();
       
       const storageAdapter = this.providers[this.currentProvider];
@@ -135,14 +143,14 @@ export class StorageService {
       });
 
       return result;
-    } catch (error) {
-      log('error', 'Failed to retrieve data', { 
-        fileName, 
-        provider: this.currentProvider,
-        error: error.message 
-      });
-      throw createError('Retrieval operation failed', 'RETRIEVAL_FAILED', { fileName, error });
-    }
+    }, {
+      category: ErrorCategory.STORAGE,
+      severity: ErrorSeverity.HIGH,
+      source: 'storage_service_retrieve',
+      context: { fileName, provider: this.currentProvider },
+      recoverable: true,
+      userVisible: true
+    })();
   }
 
   /**
@@ -151,7 +159,7 @@ export class StorageService {
    * @returns {Promise<Object[]>} Array of file metadata
    */
   async listFiles(options = {}) {
-    try {
+    return withErrorHandling(async () => {
       this.ensureInitialized();
       
       const storageAdapter = this.providers[this.currentProvider];
@@ -166,13 +174,14 @@ export class StorageService {
         ...file,
         provider: this.currentProvider
       }));
-    } catch (error) {
-      log('error', 'Failed to list files', { 
-        provider: this.currentProvider,
-        error: error.message 
-      });
-      throw createError('List operation failed', 'LIST_FAILED', { error });
-    }
+    }, {
+      category: ErrorCategory.STORAGE,
+      severity: ErrorSeverity.MEDIUM,
+      source: 'storage_service_list_files',
+      context: { provider: this.currentProvider },
+      recoverable: true,
+      userVisible: false
+    })();
   }
 
   /**
@@ -182,7 +191,7 @@ export class StorageService {
    * @returns {Promise<Object>} Deletion result
    */
   async deleteFile(fileName, options = {}) {
-    try {
+    return withErrorHandling(async () => {
       this.ensureInitialized();
       
       const storageAdapter = this.providers[this.currentProvider];
@@ -201,14 +210,14 @@ export class StorageService {
       });
 
       return result;
-    } catch (error) {
-      log('error', 'Failed to delete file', { 
-        fileName, 
-        provider: this.currentProvider,
-        error: error.message 
-      });
-      throw createError('Delete operation failed', 'DELETE_FAILED', { fileName, error });
-    }
+    }, {
+      category: ErrorCategory.STORAGE,
+      severity: ErrorSeverity.MEDIUM,
+      source: 'storage_service_delete_file',
+      context: { fileName, provider: this.currentProvider },
+      recoverable: true,
+      userVisible: true
+    })();
   }
 
   /**

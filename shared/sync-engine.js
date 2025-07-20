@@ -7,6 +7,7 @@ import { storageService } from './storage/storage-service.js';
 import { authService } from './auth/auth-service.js';
 import { log, createError, getOrCreateDeviceId, getDeviceMetadata } from './utils.js';
 import { validateSyncData } from './validation.js';
+import { errorHandler, ErrorCategory, ErrorSeverity, withErrorHandling } from './error-handler.js';
 
 /**
  * Sync engine class
@@ -28,7 +29,7 @@ export class SyncEngine {
    * @returns {Promise<void>}
    */
   async initialize() {
-    try {
+    return withErrorHandling(async () => {
       // Initialize dependencies
       await this.tabManager.initialize();
       await tabSerializer.initialize();
@@ -41,10 +42,13 @@ export class SyncEngine {
       
       this.isInitialized = true;
       log('info', 'Sync engine initialized', { deviceId: this.deviceId });
-    } catch (error) {
-      log('error', 'Failed to initialize sync engine', { error: error.message });
-      throw error;
-    }
+    }, {
+      category: ErrorCategory.SYNC,
+      severity: ErrorSeverity.CRITICAL,
+      source: 'sync_engine_initialize',
+      recoverable: true,
+      userVisible: true
+    })();
   }
 
   /**
@@ -53,13 +57,22 @@ export class SyncEngine {
    * @returns {Promise<Object>} Sync result
    */
   async triggerSync(options = {}) {
-    try {
+    return withErrorHandling(async () => {
       if (!this.isInitialized) {
         await this.initialize();
       }
 
       if (this.isSyncing) {
-        throw createError('Sync already in progress', 'SYNC_IN_PROGRESS');
+        const error = createError('Sync already in progress', 'SYNC_IN_PROGRESS');
+        await errorHandler.handleError(error, {
+          category: ErrorCategory.SYNC,
+          severity: ErrorSeverity.MEDIUM,
+          source: 'sync_engine_trigger_sync',
+          context: { options },
+          recoverable: false,
+          userVisible: true
+        });
+        throw error;
       }
 
       this.isSyncing = true;
@@ -100,7 +113,16 @@ export class SyncEngine {
             await this.performBidirectionalSync(syncResult, { forceOverwrite, dryRun });
             break;
           default:
-            throw createError(`Invalid sync direction: ${direction}`, 'INVALID_SYNC_DIRECTION');
+            const directionError = createError(`Invalid sync direction: ${direction}`, 'INVALID_SYNC_DIRECTION');
+            await errorHandler.handleError(directionError, {
+              category: ErrorCategory.SYNC,
+              severity: ErrorSeverity.MEDIUM,
+              source: 'sync_engine_trigger_sync',
+              context: { direction, options },
+              recoverable: false,
+              userVisible: true
+            });
+            throw directionError;
         }
 
         syncResult.status = 'completed';
@@ -129,19 +151,47 @@ export class SyncEngine {
           timestamp: Date.now()
         });
 
+        // Handle the sync error with comprehensive error handling
+        await errorHandler.handleError(error, {
+          category: ErrorCategory.SYNC,
+          severity: ErrorSeverity.HIGH,
+          source: 'sync_engine_trigger_sync',
+          context: { syncId, direction, options, syncResult },
+          recoverable: true,
+          userVisible: true
+        });
+
         log('error', 'Sync operation failed', { syncId, error: error.message });
         throw error;
       } finally {
         // Record sync operation
-        await this.recordSyncOperation(syncResult);
+        try {
+          await this.recordSyncOperation(syncResult);
+        } catch (recordError) {
+          await errorHandler.handleError(recordError, {
+            category: ErrorCategory.SYNC,
+            severity: ErrorSeverity.LOW,
+            source: 'sync_engine_record_operation',
+            context: { syncId },
+            recoverable: true,
+            userVisible: false
+          });
+        }
         this.isSyncing = false;
       }
 
       return syncResult;
-    } catch (error) {
+    }, {
+      category: ErrorCategory.SYNC,
+      severity: ErrorSeverity.HIGH,
+      source: 'sync_engine_trigger_sync',
+      context: { options },
+      recoverable: true,
+      userVisible: true
+    })().catch(error => {
       this.isSyncing = false;
       throw error;
-    }
+    });
   }
 
   /**

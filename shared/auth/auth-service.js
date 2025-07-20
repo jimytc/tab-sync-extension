@@ -4,6 +4,7 @@
 import { GoogleAuthService } from './google-auth.js';
 import { GitHubAuthService } from './github-auth.js';
 import { log, createError } from '../utils.js';
+import { errorHandler, ErrorCategory, ErrorSeverity, withErrorHandling } from '../error-handler.js';
 
 /**
  * Unified authentication service class
@@ -22,7 +23,7 @@ export class AuthService {
    * @returns {Promise<void>}
    */
   async initialize() {
-    try {
+    return withErrorHandling(async () => {
       const storage = await chrome.storage.local.get(['authProvider', 'isAuthenticated']);
       
       if (storage.isAuthenticated && storage.authProvider) {
@@ -31,9 +32,12 @@ export class AuthService {
       } else {
         log('info', 'Auth service initialized - no active authentication');
       }
-    } catch (error) {
-      log('error', 'Failed to initialize auth service', { error: error.message });
-    }
+    }, {
+      category: ErrorCategory.AUTHENTICATION,
+      severity: ErrorSeverity.HIGH,
+      source: 'auth_service_initialize',
+      recoverable: true
+    })();
   }
 
   /**
@@ -43,10 +47,18 @@ export class AuthService {
    */
   async authenticate(provider) {
     if (!this.isValidProvider(provider)) {
-      throw createError(`Invalid provider: ${provider}`, 'INVALID_PROVIDER');
+      const error = createError(`Invalid provider: ${provider}`, 'INVALID_PROVIDER');
+      await errorHandler.handleError(error, {
+        category: ErrorCategory.AUTHENTICATION,
+        severity: ErrorSeverity.MEDIUM,
+        source: 'auth_service_authenticate',
+        context: { provider },
+        recoverable: false
+      });
+      throw error;
     }
 
-    try {
+    return withErrorHandling(async () => {
       log('info', 'Starting authentication', { provider });
       
       const authService = this.providers[provider];
@@ -63,11 +75,14 @@ export class AuthService {
 
       log('info', 'Authentication completed successfully', { provider });
       return tokens;
-
-    } catch (error) {
-      log('error', 'Authentication failed', { provider, error: error.message });
-      throw error;
-    }
+    }, {
+      category: ErrorCategory.AUTHENTICATION,
+      severity: ErrorSeverity.HIGH,
+      source: 'auth_service_authenticate',
+      context: { provider },
+      recoverable: true,
+      userVisible: true
+    })();
   }
 
   /**
@@ -75,7 +90,7 @@ export class AuthService {
    * @returns {Promise<void>}
    */
   async signOut() {
-    try {
+    return withErrorHandling(async () => {
       if (!this.currentProvider) {
         const storage = await chrome.storage.local.get(['authProvider']);
         this.currentProvider = storage.authProvider;
@@ -102,11 +117,13 @@ export class AuthService {
       this.currentProvider = null;
       
       log('info', 'Sign out completed successfully');
-
-    } catch (error) {
-      log('error', 'Sign out failed', { error: error.message });
-      throw error;
-    }
+    }, {
+      category: ErrorCategory.AUTHENTICATION,
+      severity: ErrorSeverity.MEDIUM,
+      source: 'auth_service_signout',
+      recoverable: true,
+      userVisible: true
+    })();
   }
 
   /**
@@ -114,7 +131,7 @@ export class AuthService {
    * @returns {Promise<Object>} Authentication status
    */
   async getAuthStatus() {
-    try {
+    return withErrorHandling(async () => {
       const storage = await chrome.storage.local.get([
         'isAuthenticated',
         'authProvider',
@@ -142,9 +159,13 @@ export class AuthService {
         lastTokenRefresh: storage.lastTokenRefresh,
         tokensValid
       };
-
-    } catch (error) {
-      log('error', 'Failed to get auth status', { error: error.message });
+    }, {
+      category: ErrorCategory.AUTHENTICATION,
+      severity: ErrorSeverity.MEDIUM,
+      source: 'auth_service_get_status',
+      recoverable: true
+    })().catch(error => {
+      // Return safe default on error
       return {
         isAuthenticated: false,
         provider: null,
@@ -152,7 +173,7 @@ export class AuthService {
         tokensValid: false,
         error: error.message
       };
-    }
+    });
   }
 
   /**
@@ -160,7 +181,7 @@ export class AuthService {
    * @returns {Promise<AuthTokens|null>} Stored tokens or null
    */
   async getStoredTokens() {
-    try {
+    return withErrorHandling(async () => {
       if (!this.currentProvider) {
         const storage = await chrome.storage.local.get(['authProvider']);
         this.currentProvider = storage.authProvider;
@@ -172,11 +193,15 @@ export class AuthService {
 
       const authService = this.providers[this.currentProvider];
       return await authService.getStoredTokens();
-
-    } catch (error) {
-      log('error', 'Failed to get stored tokens', { error: error.message });
+    }, {
+      category: ErrorCategory.AUTHENTICATION,
+      severity: ErrorSeverity.LOW,
+      source: 'auth_service_get_tokens',
+      recoverable: true
+    })().catch(error => {
+      // Return null on error for graceful degradation
       return null;
-    }
+    });
   }
 
   /**
@@ -184,7 +209,7 @@ export class AuthService {
    * @returns {Promise<AuthTokens>} Refreshed tokens
    */
   async refreshTokens() {
-    try {
+    return withErrorHandling(async () => {
       if (!this.currentProvider) {
         const storage = await chrome.storage.local.get(['authProvider']);
         this.currentProvider = storage.authProvider;
@@ -206,11 +231,13 @@ export class AuthService {
 
       log('info', 'Tokens refreshed successfully', { provider: this.currentProvider });
       return tokens;
-
-    } catch (error) {
-      log('error', 'Failed to refresh tokens', { error: error.message });
-      throw error;
-    }
+    }, {
+      category: ErrorCategory.AUTHENTICATION,
+      severity: ErrorSeverity.HIGH,
+      source: 'auth_service_refresh_tokens',
+      recoverable: true,
+      userVisible: true
+    })();
   }
 
   /**
@@ -218,7 +245,7 @@ export class AuthService {
    * @returns {Promise<Object>} User profile data
    */
   async getUserProfile() {
-    try {
+    return withErrorHandling(async () => {
       if (!this.currentProvider) {
         const storage = await chrome.storage.local.get(['authProvider']);
         this.currentProvider = storage.authProvider;
@@ -233,11 +260,13 @@ export class AuthService {
       
       // Normalize profile data across providers
       return this.normalizeProfile(profile, this.currentProvider);
-
-    } catch (error) {
-      log('error', 'Failed to get user profile', { error: error.message });
-      throw error;
-    }
+    }, {
+      category: ErrorCategory.AUTHENTICATION,
+      severity: ErrorSeverity.MEDIUM,
+      source: 'auth_service_get_profile',
+      recoverable: true,
+      userVisible: true
+    })();
   }
 
   /**
