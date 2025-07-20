@@ -1,5 +1,8 @@
 # Tab Sync Extension
 
+> **🤖 Built Entirely with Kiro AI**  
+> This entire project - from initial concept to production-ready code - was created using [Kiro](https://kiro.ai), an AI-powered development assistant. Every line of code, test, documentation, and architectural decision was generated through AI-human collaboration, showcasing the power of AI-assisted software development.
+
 A comprehensive Chromium browser extension that enables secure, manual synchronization of browser tabs across multiple devices using Google Drive or GitHub authentication.
 
 ## Features
