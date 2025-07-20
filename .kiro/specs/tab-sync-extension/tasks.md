@@ -117,7 +117,7 @@
     - Write unit tests for basic sync operations
     - _Requirements: 2.1, 2.2, 7.1, 7.2_
 
-  - [-] 6.2 Create conflict detection algorithms
+  - [x] 6.2 Create conflict detection algorithms
 
     - Implement timestamp-based conflict detection
     - Create tab-level conflict identification
@@ -125,7 +125,7 @@
     - Write unit tests for conflict detection scenarios
     - _Requirements: 4.1, 4.2, 7.3_
 
-  - [ ] 6.3 Build merge engine for conflict resolution
+  - [-] 6.3 Build merge engine for conflict resolution
     - Implement automatic merge for non-conflicting changes
     - Create merge strategies for different conflict types
     - Add user choice application for manual conflict resolution

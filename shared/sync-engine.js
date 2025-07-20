@@ -1285,4 +1285,945 @@ export class SyncEngine {
 }
 
 // Create singleton instance
+export const syncEngine = new SyncEngine();  /**
+   * 
+Advanced merge engine for conflict resolution
+   * @param {Object} syncResult - Sync result object
+   * @param {TabData[]} localTabs - Local tab data
+   * @param {SyncData} remoteSyncData - Remote sync data
+   * @param {Object[]} conflicts - Detected conflicts
+   * @param {Object} resolutionChoices - User resolution choices
+   * @param {Object} options - Merge options
+   * @returns {Promise<void>}
+   */
+  async performAdvancedMerge(syncResult, localTabs, remoteSyncData, conflicts, resolutionChoices = {}, options = {}) {
+    try {
+      log('info', 'Starting advanced merge with conflict resolution', {
+        conflictCount: conflicts.length,
+        resolutionChoices: Object.keys(resolutionChoices).length
+      });
+
+      const remoteTabs = remoteSyncData.tabs;
+      const mergeResult = {
+        mergedTabs: [],
+        appliedResolutions: [],
+        unresolvedConflicts: [],
+        mergeOperations: []
+      };
+
+      // Group conflicts by type for efficient processing
+      const conflictsByType = this.groupConflictsByTypeDetailed(conflicts);
+
+      // 1. Resolve timestamp conflicts first
+      if (conflictsByType.timestamp) {
+        await this.resolveTimestampConflicts(
+          conflictsByType.timestamp, localTabs, remoteTabs, resolutionChoices, mergeResult
+        );
+      }
+
+      // 2. Resolve tab metadata conflicts
+      if (conflictsByType.tab_metadata) {
+        await this.resolveTabMetadataConflicts(
+          conflictsByType.tab_metadata, localTabs, remoteTabs, resolutionChoices, mergeResult
+        );
+      }
+
+      // 3. Resolve structural conflicts
+      if (conflictsByType.structural) {
+        await this.resolveStructuralConflicts(
+          conflictsByType.structural, localTabs, remoteTabs, resolutionChoices, mergeResult
+        );
+      }
+
+      // 4. Resolve device conflicts
+      if (conflictsByType.device) {
+        await this.resolveDeviceConflicts(
+          conflictsByType.device, localTabs, remoteTabs, resolutionChoices, mergeResult
+        );
+      }
+
+      // 5. Perform intelligent merge of remaining tabs
+      const finalMergedTabs = await this.performIntelligentMerge(
+        localTabs, remoteTabs, mergeResult, options
+      );
+
+      // 6. Apply merged tabs to browser if not dry run
+      if (!options.dryRun) {
+        const applyResult = await this.applyMergedTabs(finalMergedTabs, options);
+        mergeResult.applyResult = applyResult;
+      }
+
+      // 7. Store merged data to cloud
+      if (!options.dryRun) {
+        const syncData = await tabSerializer.createSyncData(finalMergedTabs, {
+          syncId: syncResult.syncId,
+          syncType: 'merge',
+          deviceMetadata: await getDeviceMetadata(),
+          mergeMetadata: {
+            conflictsResolved: mergeResult.appliedResolutions.length,
+            unresolvedConflicts: mergeResult.unresolvedConflicts.length,
+            mergeStrategy: 'advanced'
+          }
+        });
+
+        const storeResult = await storageService.store(this.syncFileName, syncData, {
+          commitMessage: `Advanced merge from ${this.deviceId} - ${new Date().toISOString()}`
+        });
+
+        mergeResult.storeResult = storeResult;
+      }
+
+      // Update sync result
+      syncResult.operations.push({
+        type: 'advanced_merge',
+        conflictsResolved: mergeResult.appliedResolutions.length,
+        unresolvedConflicts: mergeResult.unresolvedConflicts.length,
+        finalTabCount: finalMergedTabs.length,
+        timestamp: Date.now()
+      });
+
+      log('info', 'Advanced merge completed', {
+        finalTabCount: finalMergedTabs.length,
+        conflictsResolved: mergeResult.appliedResolutions.length,
+        unresolvedConflicts: mergeResult.unresolvedConflicts.length
+      });
+
+    } catch (error) {
+      log('error', 'Advanced merge failed', { error: error.message });
+      throw error;
+    }
+  }
+
+  /**
+   * Resolve timestamp conflicts
+   * @param {Object[]} conflicts - Timestamp conflicts
+   * @param {TabData[]} localTabs - Local tab data
+   * @param {TabData[]} remoteTabs - Remote tab data
+   * @param {Object} resolutionChoices - User choices
+   * @param {Object} mergeResult - Merge result to update
+   * @returns {Promise<void>}
+   */
+  async resolveTimestampConflicts(conflicts, localTabs, remoteTabs, resolutionChoices, mergeResult) {
+    for (const conflict of conflicts) {
+      const resolution = resolutionChoices[conflict.id] || this.getDefaultResolution(conflict);
+      
+      try {
+        switch (resolution) {
+          case 'local_wins':
+            mergeResult.mergeOperations.push({
+              type: 'timestamp_resolution',
+              strategy: 'local_wins',
+              conflictId: conflict.id
+            });
+            break;
+
+          case 'remote_wins':
+            mergeResult.mergeOperations.push({
+              type: 'timestamp_resolution',
+              strategy: 'remote_wins',
+              conflictId: conflict.id
+            });
+            break;
+
+          case 'merge':
+            // Intelligent timestamp merge - use newer data but preserve both if significantly different
+            const timeDiff = Math.abs(conflict.details.localTimestamp - conflict.details.remoteTimestamp);
+            if (timeDiff > 3600000) { // More than 1 hour difference
+              mergeResult.mergeOperations.push({
+                type: 'timestamp_resolution',
+                strategy: 'preserve_both',
+                conflictId: conflict.id,
+                reason: 'significant_time_difference'
+              });
+            } else {
+              mergeResult.mergeOperations.push({
+                type: 'timestamp_resolution',
+                strategy: 'use_newer',
+                conflictId: conflict.id
+              });
+            }
+            break;
+
+          default:
+            mergeResult.unresolvedConflicts.push(conflict);
+            continue;
+        }
+
+        mergeResult.appliedResolutions.push({
+          conflictId: conflict.id,
+          resolution: resolution,
+          timestamp: Date.now()
+        });
+
+      } catch (error) {
+        log('error', 'Failed to resolve timestamp conflict', { 
+          conflictId: conflict.id, 
+          error: error.message 
+        });
+        mergeResult.unresolvedConflicts.push(conflict);
+      }
+    }
+  }
+
+  /**
+   * Resolve tab metadata conflicts
+   * @param {Object[]} conflicts - Tab metadata conflicts
+   * @param {TabData[]} localTabs - Local tab data
+   * @param {TabData[]} remoteTabs - Remote tab data
+   * @param {Object} resolutionChoices - User choices
+   * @param {Object} mergeResult - Merge result to update
+   * @returns {Promise<void>}
+   */
+  async resolveTabMetadataConflicts(conflicts, localTabs, remoteTabs, resolutionChoices, mergeResult) {
+    for (const conflict of conflicts) {
+      const resolution = resolutionChoices[conflict.id] || this.getDefaultResolution(conflict);
+      
+      try {
+        switch (conflict.subtype) {
+          case 'modified':
+            await this.resolveModifiedTabConflict(conflict, resolution, mergeResult);
+            break;
+
+          case 'duplicate':
+            await this.resolveDuplicateTabConflict(conflict, resolution, mergeResult);
+            break;
+
+          default:
+            mergeResult.unresolvedConflicts.push(conflict);
+            continue;
+        }
+
+        mergeResult.appliedResolutions.push({
+          conflictId: conflict.id,
+          resolution: resolution,
+          timestamp: Date.now()
+        });
+
+      } catch (error) {
+        log('error', 'Failed to resolve tab metadata conflict', { 
+          conflictId: conflict.id, 
+          error: error.message 
+        });
+        mergeResult.unresolvedConflicts.push(conflict);
+      }
+    }
+  }
+
+  /**
+   * Resolve modified tab conflict
+   * @param {Object} conflict - Modified tab conflict
+   * @param {string} resolution - Resolution strategy
+   * @param {Object} mergeResult - Merge result to update
+   * @returns {Promise<void>}
+   */
+  async resolveModifiedTabConflict(conflict, resolution, mergeResult) {
+    const { localTab, remoteTab, differences } = conflict.details;
+
+    switch (resolution) {
+      case 'local_wins':
+        mergeResult.mergeOperations.push({
+          type: 'tab_metadata_resolution',
+          strategy: 'local_wins',
+          url: conflict.url,
+          preservedTab: localTab
+        });
+        break;
+
+      case 'remote_wins':
+        mergeResult.mergeOperations.push({
+          type: 'tab_metadata_resolution',
+          strategy: 'remote_wins',
+          url: conflict.url,
+          preservedTab: remoteTab
+        });
+        break;
+
+      case 'merge_metadata':
+        // Intelligent field-by-field merge
+        const mergedTab = await this.mergeTabMetadata(localTab, remoteTab, differences);
+        mergeResult.mergeOperations.push({
+          type: 'tab_metadata_resolution',
+          strategy: 'merge_metadata',
+          url: conflict.url,
+          mergedTab: mergedTab,
+          mergedFields: differences.map(d => d.field)
+        });
+        break;
+
+      default:
+        throw new Error(`Unknown resolution strategy: ${resolution}`);
+    }
+  }
+
+  /**
+   * Resolve duplicate tab conflict
+   * @param {Object} conflict - Duplicate tab conflict
+   * @param {string} resolution - Resolution strategy
+   * @param {Object} mergeResult - Merge result to update
+   * @returns {Promise<void>}
+   */
+  async resolveDuplicateTabConflict(conflict, resolution, mergeResult) {
+    const { tabs, devices } = conflict.details;
+
+    switch (resolution) {
+      case 'keep_local':
+        const localTabs = tabs.filter(tab => tab.deviceId === this.deviceId);
+        mergeResult.mergeOperations.push({
+          type: 'duplicate_resolution',
+          strategy: 'keep_local',
+          url: conflict.url,
+          keptTabs: localTabs,
+          removedCount: tabs.length - localTabs.length
+        });
+        break;
+
+      case 'keep_remote':
+        const remoteTabs = tabs.filter(tab => tab.deviceId !== this.deviceId);
+        mergeResult.mergeOperations.push({
+          type: 'duplicate_resolution',
+          strategy: 'keep_remote',
+          url: conflict.url,
+          keptTabs: remoteTabs,
+          removedCount: tabs.length - remoteTabs.length
+        });
+        break;
+
+      case 'keep_newest':
+        const newestTab = tabs.reduce((newest, tab) => 
+          tab.timestamp > newest.timestamp ? tab : newest
+        );
+        mergeResult.mergeOperations.push({
+          type: 'duplicate_resolution',
+          strategy: 'keep_newest',
+          url: conflict.url,
+          keptTabs: [newestTab],
+          removedCount: tabs.length - 1
+        });
+        break;
+
+      case 'keep_all':
+        // Keep all duplicates but mark them distinctly
+        const markedTabs = tabs.map((tab, index) => ({
+          ...tab,
+          title: index > 0 ? `${tab.title} (${index + 1})` : tab.title
+        }));
+        mergeResult.mergeOperations.push({
+          type: 'duplicate_resolution',
+          strategy: 'keep_all',
+          url: conflict.url,
+          keptTabs: markedTabs,
+          removedCount: 0
+        });
+        break;
+
+      default:
+        throw new Error(`Unknown resolution strategy: ${resolution}`);
+    }
+  }
+
+  /**
+   * Resolve structural conflicts
+   * @param {Object[]} conflicts - Structural conflicts
+   * @param {TabData[]} localTabs - Local tab data
+   * @param {TabData[]} remoteTabs - Remote tab data
+   * @param {Object} resolutionChoices - User choices
+   * @param {Object} mergeResult - Merge result to update
+   * @returns {Promise<void>}
+   */
+  async resolveStructuralConflicts(conflicts, localTabs, remoteTabs, resolutionChoices, mergeResult) {
+    for (const conflict of conflicts) {
+      const resolution = resolutionChoices[conflict.id] || this.getDefaultResolution(conflict);
+      
+      try {
+        switch (conflict.subtype) {
+          case 'window_count':
+            await this.resolveWindowCountConflict(conflict, resolution, mergeResult);
+            break;
+
+          case 'tab_order':
+            await this.resolveTabOrderConflict(conflict, resolution, mergeResult);
+            break;
+
+          case 'pinned_status':
+            await this.resolvePinnedStatusConflict(conflict, resolution, mergeResult);
+            break;
+
+          case 'window_organization':
+            await this.resolveWindowOrganizationConflict(conflict, resolution, mergeResult);
+            break;
+
+          default:
+            mergeResult.unresolvedConflicts.push(conflict);
+            continue;
+        }
+
+        mergeResult.appliedResolutions.push({
+          conflictId: conflict.id,
+          resolution: resolution,
+          timestamp: Date.now()
+        });
+
+      } catch (error) {
+        log('error', 'Failed to resolve structural conflict', { 
+          conflictId: conflict.id, 
+          error: error.message 
+        });
+        mergeResult.unresolvedConflicts.push(conflict);
+      }
+    }
+  }
+
+  /**
+   * Resolve device conflicts
+   * @param {Object[]} conflicts - Device conflicts
+   * @param {TabData[]} localTabs - Local tab data
+   * @param {TabData[]} remoteTabs - Remote tab data
+   * @param {Object} resolutionChoices - User choices
+   * @param {Object} mergeResult - Merge result to update
+   * @returns {Promise<void>}
+   */
+  async resolveDeviceConflicts(conflicts, localTabs, remoteTabs, resolutionChoices, mergeResult) {
+    for (const conflict of conflicts) {
+      const resolution = resolutionChoices[conflict.id] || this.getDefaultResolution(conflict);
+      
+      try {
+        switch (conflict.subtype) {
+          case 'same_device_id':
+            // Generate new device ID for one of the devices
+            const newDeviceId = await this.generateNewDeviceId();
+            mergeResult.mergeOperations.push({
+              type: 'device_resolution',
+              strategy: 'regenerate_device_id',
+              oldDeviceId: this.deviceId,
+              newDeviceId: newDeviceId
+            });
+            this.deviceId = newDeviceId;
+            break;
+
+          case 'platform_difference':
+            // Apply platform-aware merge strategies
+            mergeResult.mergeOperations.push({
+              type: 'device_resolution',
+              strategy: 'platform_aware_merge',
+              localPlatform: conflict.details.localPlatform,
+              remotePlatform: conflict.details.remotePlatform
+            });
+            break;
+
+          default:
+            mergeResult.unresolvedConflicts.push(conflict);
+            continue;
+        }
+
+        mergeResult.appliedResolutions.push({
+          conflictId: conflict.id,
+          resolution: resolution,
+          timestamp: Date.now()
+        });
+
+      } catch (error) {
+        log('error', 'Failed to resolve device conflict', { 
+          conflictId: conflict.id, 
+          error: error.message 
+        });
+        mergeResult.unresolvedConflicts.push(conflict);
+      }
+    }
+  }
+
+  /**
+   * Perform intelligent merge of tabs
+   * @param {TabData[]} localTabs - Local tab data
+   * @param {TabData[]} remoteTabs - Remote tab data
+   * @param {Object} mergeResult - Current merge result
+   * @param {Object} options - Merge options
+   * @returns {Promise<TabData[]>} Merged tabs
+   */
+  async performIntelligentMerge(localTabs, remoteTabs, mergeResult, options = {}) {
+    try {
+      const mergedTabs = [];
+      const processedUrls = new Set();
+
+      // Apply merge operations to determine final tab set
+      for (const operation of mergeResult.mergeOperations) {
+        switch (operation.type) {
+          case 'tab_metadata_resolution':
+            if (operation.strategy === 'merge_metadata' && operation.mergedTab) {
+              mergedTabs.push(operation.mergedTab);
+              processedUrls.add(operation.url);
+            } else if (operation.preservedTab) {
+              mergedTabs.push(operation.preservedTab);
+              processedUrls.add(operation.url);
+            }
+            break;
+
+          case 'duplicate_resolution':
+            mergedTabs.push(...operation.keptTabs);
+            processedUrls.add(operation.url);
+            break;
+        }
+      }
+
+      // Add remaining tabs that weren't involved in conflicts
+      const allTabs = [...localTabs, ...remoteTabs];
+      const remainingTabs = allTabs.filter(tab => !processedUrls.has(tab.url));
+      
+      // Deduplicate remaining tabs (prefer newer timestamps)
+      const urlMap = new Map();
+      for (const tab of remainingTabs) {
+        const existing = urlMap.get(tab.url);
+        if (!existing || tab.timestamp > existing.timestamp) {
+          urlMap.set(tab.url, tab);
+        }
+      }
+
+      mergedTabs.push(...urlMap.values());
+
+      // Sort tabs by window and index for consistent ordering
+      const sortedTabs = mergedTabs.sort((a, b) => {
+        if (a.windowId !== b.windowId) {
+          return a.windowId - b.windowId;
+        }
+        return a.index - b.index;
+      });
+
+      // Reassign indices to ensure consistency
+      const finalTabs = this.reassignTabIndices(sortedTabs);
+
+      log('info', 'Intelligent merge completed', {
+        originalLocal: localTabs.length,
+        originalRemote: remoteTabs.length,
+        finalMerged: finalTabs.length,
+        operationsApplied: mergeResult.mergeOperations.length
+      });
+
+      return finalTabs;
+
+    } catch (error) {
+      log('error', 'Intelligent merge failed', { error: error.message });
+      throw error;
+    }
+  }
+
+  /**
+   * Apply merged tabs to browser
+   * @param {TabData[]} mergedTabs - Merged tab data
+   * @param {Object} options - Apply options
+   * @returns {Promise<Object>} Apply result
+   */
+  async applyMergedTabs(mergedTabs, options = {}) {
+    try {
+      // Get current tabs to determine what needs to be changed
+      const currentTabs = await this.tabManager.getCurrentTabs();
+      
+      // Calculate changes needed
+      const changes = this.calculateTabChanges(currentTabs, mergedTabs);
+      
+      // Apply changes
+      const applyResult = await this.tabManager.applyTabChanges(changes);
+      
+      log('info', 'Merged tabs applied to browser', {
+        tabsCreated: applyResult.created.length,
+        tabsClosed: applyResult.closed.length,
+        tabsUpdated: applyResult.updated.length,
+        errors: applyResult.errors.length
+      });
+
+      return applyResult;
+
+    } catch (error) {
+      log('error', 'Failed to apply merged tabs', { error: error.message });
+      throw error;
+    }
+  }
+
+  /**
+   * Merge tab metadata intelligently
+   * @param {TabData} localTab - Local tab
+   * @param {TabData} remoteTab - Remote tab
+   * @param {Object[]} differences - Field differences
+   * @returns {Promise<TabData>} Merged tab
+   */
+  async mergeTabMetadata(localTab, remoteTab, differences) {
+    const mergedTab = { ...localTab }; // Start with local as base
+
+    for (const diff of differences) {
+      switch (diff.field) {
+        case 'title':
+          // Use the longer, more descriptive title
+          if (remoteTab.title.length > localTab.title.length) {
+            mergedTab.title = remoteTab.title;
+          }
+          break;
+
+        case 'pinned':
+          // If either side has it pinned, keep it pinned
+          mergedTab.pinned = localTab.pinned || remoteTab.pinned;
+          break;
+
+        case 'index':
+          // Use the average index position
+          mergedTab.index = Math.floor((localTab.index + remoteTab.index) / 2);
+          break;
+
+        case 'windowId':
+          // Prefer local window organization
+          mergedTab.windowId = localTab.windowId;
+          break;
+
+        default:
+          // For unknown fields, prefer newer timestamp
+          if (remoteTab.timestamp > localTab.timestamp) {
+            mergedTab[diff.field] = remoteTab[diff.field];
+          }
+          break;
+      }
+    }
+
+    // Update timestamp to reflect merge
+    mergedTab.timestamp = Date.now();
+    mergedTab.deviceId = this.deviceId; // Mark as processed by this device
+
+    return mergedTab;
+  }
+
+  /**
+   * Calculate tab changes needed to reach target state
+   * @param {TabData[]} currentTabs - Current browser tabs
+   * @param {TabData[]} targetTabs - Target tab state
+   * @returns {Object} Changes needed
+   */
+  calculateTabChanges(currentTabs, targetTabs) {
+    const changes = {
+      tabsToCreate: [],
+      tabsToClose: [],
+      tabsToUpdate: []
+    };
+
+    const currentUrlMap = new Map(currentTabs.map(tab => [tab.url, tab]));
+    const targetUrlMap = new Map(targetTabs.map(tab => [tab.url, tab]));
+
+    // Find tabs to create (in target but not in current)
+    for (const [url, targetTab] of targetUrlMap) {
+      if (!currentUrlMap.has(url)) {
+        changes.tabsToCreate.push(targetTab);
+      }
+    }
+
+    // Find tabs to close (in current but not in target)
+    for (const [url, currentTab] of currentUrlMap) {
+      if (!targetUrlMap.has(url) && currentTab.chromeTabId) {
+        changes.tabsToClose.push(currentTab.chromeTabId);
+      }
+    }
+
+    // Find tabs to update (different metadata)
+    for (const [url, targetTab] of targetUrlMap) {
+      const currentTab = currentUrlMap.get(url);
+      if (currentTab && currentTab.chromeTabId) {
+        const updateProperties = {};
+        
+        if (currentTab.pinned !== targetTab.pinned) {
+          updateProperties.pinned = targetTab.pinned;
+        }
+        
+        if (Object.keys(updateProperties).length > 0) {
+          changes.tabsToUpdate.push({
+            tabId: currentTab.chromeTabId,
+            properties: updateProperties
+          });
+        }
+      }
+    }
+
+    return changes;
+  }
+
+  /**
+   * Reassign tab indices for consistent ordering
+   * @param {TabData[]} tabs - Tabs to reassign indices
+   * @returns {TabData[]} Tabs with reassigned indices
+   */
+  reassignTabIndices(tabs) {
+    const windowGroups = this.groupTabsByWindow(tabs);
+    const reassignedTabs = [];
+
+    for (const [windowId, windowTabs] of Object.entries(windowGroups)) {
+      windowTabs.forEach((tab, index) => {
+        reassignedTabs.push({
+          ...tab,
+          index: index,
+          windowId: parseInt(windowId)
+        });
+      });
+    }
+
+    return reassignedTabs;
+  }
+
+  /**
+   * Get default resolution strategy for a conflict
+   * @param {Object} conflict - Conflict object
+   * @returns {string} Default resolution strategy
+   */
+  getDefaultResolution(conflict) {
+    const defaultStrategies = {
+      timestamp: {
+        concurrent_modification: 'local_wins',
+        stale_local: 'remote_wins',
+        stale_remote: 'local_wins'
+      },
+      tab_metadata: {
+        modified: 'merge_metadata',
+        duplicate: 'keep_newest'
+      },
+      structural: {
+        window_count: 'merge_windows',
+        tab_order: 'local_order',
+        pinned_status: 'keep_pinned',
+        window_organization: 'local_organization'
+      },
+      device: {
+        same_device_id: 'regenerate_device_id',
+        platform_difference: 'platform_aware_merge'
+      }
+    };
+
+    return defaultStrategies[conflict.type]?.[conflict.subtype] || 'manual';
+  }
+
+  /**
+   * Group conflicts by type with detailed structure
+   * @param {Object[]} conflicts - Array of conflicts
+   * @returns {Object} Conflicts grouped by type
+   */
+  groupConflictsByTypeDetailed(conflicts) {
+    return conflicts.reduce((groups, conflict) => {
+      if (!groups[conflict.type]) {
+        groups[conflict.type] = [];
+      }
+      groups[conflict.type].push(conflict);
+      return groups;
+    }, {});
+  }
+
+  /**
+   * Generate new device ID
+   * @returns {Promise<string>} New device ID
+   */
+  async generateNewDeviceId() {
+    const newId = generateDeviceId();
+    await chrome.storage.local.set({ deviceId: newId });
+    return newId;
+  }
+
+  /**
+   * Resolve window count conflict
+   * @param {Object} conflict - Window count conflict
+   * @param {string} resolution - Resolution strategy
+   * @param {Object} mergeResult - Merge result to update
+   * @returns {Promise<void>}
+   */
+  async resolveWindowCountConflict(conflict, resolution, mergeResult) {
+    switch (resolution) {
+      case 'merge_windows':
+        mergeResult.mergeOperations.push({
+          type: 'structural_resolution',
+          strategy: 'merge_windows',
+          conflictId: conflict.id
+        });
+        break;
+
+      case 'local_structure':
+        mergeResult.mergeOperations.push({
+          type: 'structural_resolution',
+          strategy: 'local_structure',
+          conflictId: conflict.id
+        });
+        break;
+
+      case 'remote_structure':
+        mergeResult.mergeOperations.push({
+          type: 'structural_resolution',
+          strategy: 'remote_structure',
+          conflictId: conflict.id
+        });
+        break;
+
+      default:
+        throw new Error(`Unknown window count resolution: ${resolution}`);
+    }
+  }
+
+  /**
+   * Resolve tab order conflict
+   * @param {Object} conflict - Tab order conflict
+   * @param {string} resolution - Resolution strategy
+   * @param {Object} mergeResult - Merge result to update
+   * @returns {Promise<void>}
+   */
+  async resolveTabOrderConflict(conflict, resolution, mergeResult) {
+    switch (resolution) {
+      case 'local_order':
+        mergeResult.mergeOperations.push({
+          type: 'structural_resolution',
+          strategy: 'local_order',
+          windowId: conflict.details.windowId,
+          order: conflict.details.localOrder
+        });
+        break;
+
+      case 'remote_order':
+        mergeResult.mergeOperations.push({
+          type: 'structural_resolution',
+          strategy: 'remote_order',
+          windowId: conflict.details.windowId,
+          order: conflict.details.remoteOrder
+        });
+        break;
+
+      case 'merge_order':
+        // Intelligent order merge - interleave based on common patterns
+        const mergedOrder = this.mergeTabOrders(
+          conflict.details.localOrder,
+          conflict.details.remoteOrder
+        );
+        mergeResult.mergeOperations.push({
+          type: 'structural_resolution',
+          strategy: 'merge_order',
+          windowId: conflict.details.windowId,
+          order: mergedOrder
+        });
+        break;
+
+      default:
+        throw new Error(`Unknown tab order resolution: ${resolution}`);
+    }
+  }
+
+  /**
+   * Resolve pinned status conflict
+   * @param {Object} conflict - Pinned status conflict
+   * @param {string} resolution - Resolution strategy
+   * @param {Object} mergeResult - Merge result to update
+   * @returns {Promise<void>}
+   */
+  async resolvePinnedStatusConflict(conflict, resolution, mergeResult) {
+    switch (resolution) {
+      case 'keep_pinned':
+        mergeResult.mergeOperations.push({
+          type: 'structural_resolution',
+          strategy: 'keep_pinned',
+          url: conflict.url,
+          pinned: true
+        });
+        break;
+
+      case 'remove_pin':
+        mergeResult.mergeOperations.push({
+          type: 'structural_resolution',
+          strategy: 'remove_pin',
+          url: conflict.url,
+          pinned: false
+        });
+        break;
+
+      default:
+        throw new Error(`Unknown pinned status resolution: ${resolution}`);
+    }
+  }
+
+  /**
+   * Resolve window organization conflict
+   * @param {Object} conflict - Window organization conflict
+   * @param {string} resolution - Resolution strategy
+   * @param {Object} mergeResult - Merge result to update
+   * @returns {Promise<void>}
+   */
+  async resolveWindowOrganizationConflict(conflict, resolution, mergeResult) {
+    switch (resolution) {
+      case 'local_organization':
+        mergeResult.mergeOperations.push({
+          type: 'structural_resolution',
+          strategy: 'local_organization',
+          movedTabs: conflict.details.movedTabs
+        });
+        break;
+
+      case 'remote_organization':
+        mergeResult.mergeOperations.push({
+          type: 'structural_resolution',
+          strategy: 'remote_organization',
+          movedTabs: conflict.details.movedTabs
+        });
+        break;
+
+      case 'merge_smart':
+        // Smart merge based on tab relationships and usage patterns
+        const smartOrganization = this.calculateSmartWindowOrganization(
+          conflict.details.movedTabs
+        );
+        mergeResult.mergeOperations.push({
+          type: 'structural_resolution',
+          strategy: 'merge_smart',
+          organization: smartOrganization
+        });
+        break;
+
+      default:
+        throw new Error(`Unknown window organization resolution: ${resolution}`);
+    }
+  }
+
+  /**
+   * Merge tab orders intelligently
+   * @param {string[]} localOrder - Local tab order
+   * @param {string[]} remoteOrder - Remote tab order
+   * @returns {string[]} Merged order
+   */
+  mergeTabOrders(localOrder, remoteOrder) {
+    // Simple merge strategy: interleave based on common subsequences
+    const merged = [];
+    const localSet = new Set(localOrder);
+    const remoteSet = new Set(remoteOrder);
+    const common = localOrder.filter(url => remoteSet.has(url));
+    
+    // Add common tabs in local order
+    merged.push(...common);
+    
+    // Add local-only tabs
+    const localOnly = localOrder.filter(url => !remoteSet.has(url));
+    merged.push(...localOnly);
+    
+    // Add remote-only tabs
+    const remoteOnly = remoteOrder.filter(url => !localSet.has(url));
+    merged.push(...remoteOnly);
+    
+    return merged;
+  }
+
+  /**
+   * Calculate smart window organization
+   * @param {Object[]} movedTabs - Tabs that moved between windows
+   * @returns {Object} Smart organization strategy
+   */
+  calculateSmartWindowOrganization(movedTabs) {
+    // Analyze tab relationships and suggest optimal window organization
+    // This is a simplified version - real implementation would be more sophisticated
+    
+    const windowPreferences = {};
+    
+    for (const tab of movedTabs) {
+      // Prefer local organization for now
+      windowPreferences[tab.url] = tab.localWindowId;
+    }
+    
+    return {
+      strategy: 'prefer_local',
+      windowAssignments: windowPreferences
+    };
+  }
+}
+
+// Export singleton instance
 export const syncEngine = new SyncEngine();
