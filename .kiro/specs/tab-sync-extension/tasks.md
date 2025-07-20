@@ -14,14 +14,14 @@
   - _Requirements: 1.1, 2.1, 3.1, 6.1_
 
 - [ ] 2. Implement core data models and utilities
-  - [-] 2.1 Create TypeScript interfaces for tab data and sync structures
+  - [x] 2.1 Create TypeScript interfaces for tab data and sync structures
     - Define TabData, SyncData, ConflictData, and related interfaces
     - Implement data validation functions for type safety
     - Write unit tests for data model validation
     - Stage all files and commit with message: "feat: add TypeScript interfaces and data validation for tab sync"
     - _Requirements: 4.1, 4.2, 5.1_
 
-  - [ ] 2.2 Implement device identification and metadata utilities
+  - [-] 2.2 Implement device identification and metadata utilities
     - Create unique device ID generation and storage
     - Implement device metadata collection (name, browser version)
     - Write utilities for timestamp handling and comparison
