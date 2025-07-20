@@ -79,7 +79,7 @@
     - Stage all files and commit with message: "feat: add tab data serialization and validation"
     - _Requirements: 4.4, 5.3, 7.5_
 
-- [ ] 5. Create cloud storage interface
+- [x] 5. Create cloud storage interface
 
   - [x] 5.1 Implement Google Drive storage adapter
 
@@ -99,7 +99,7 @@
     - Stage all files and commit with message: "feat: implement GitHub storage adapter"
     - _Requirements: 5.1, 5.2, 5.3_
 
-  - [-] 5.3 Create unified storage interface
+  - [x] 5.3 Create unified storage interface
     - Implement storage factory that selects appropriate provider
     - Add encryption/decryption for sensitive data
     - Create storage operation retry logic with exponential backoff
@@ -109,7 +109,7 @@
 
 - [ ] 6. Build sync engine with conflict resolution
 
-  - [ ] 6.1 Implement basic sync operations
+  - [-] 6.1 Implement basic sync operations
 
     - Create sync trigger functionality
     - Implement data upload and download coordination
